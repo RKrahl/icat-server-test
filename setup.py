@@ -1,7 +1,16 @@
 #! /usr/bin/python
 
 from distutils.core import setup
+from distutils import log
+import distutils.command.install
 import distutils_pytest
+
+# Do nothing dummy.
+class install(distutils.command.install.install):
+    def run(self):
+        """Runs the command."""
+        log.info("there is nothing to install here.")
+
 
 setup(
     name = "icat-server-test",
@@ -28,5 +37,6 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Testing",
         ],
+    cmdclass = {'install': install},
 )
 
