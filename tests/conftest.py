@@ -4,6 +4,8 @@
 from __future__ import print_function
 import sys
 import os.path
+from random import getrandbits
+import zlib
 import subprocess
 import logging
 from distutils.version import StrictVersion as Version
@@ -24,6 +26,32 @@ icatingest = "/usr/bin/icatingest"
 
 
 # ============================= helper ===============================
+
+
+if sys.version_info < (3, 0):
+    def buf(seq):
+        return buffer(bytearray(seq))
+else:
+    def buf(seq):
+        return bytearray(seq)
+
+class DummyDatafile(object):
+    """A dummy readable with random content to be used for test upload.
+    """
+    def __init__(self, size):
+        self.size = size
+        self._delivered = 0
+        self.crc32 = 0
+    def read(self, n):
+        remaining = self.size - self._delivered
+        if n < 0 or n > remaining:
+            n = remaining
+        chunk = buf(getrandbits(8) for _ in range(n))
+        self.crc32 = zlib.crc32(chunk, self.crc32)
+        self._delivered += n
+        return chunk
+    def getcrc(self):
+        return "%x" % (self.crc32 & 0xffffffff)
 
 
 def gettestdata(fname):
