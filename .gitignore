@@ -1,3 +1,4 @@
 /MANIFEST
 /dist/
+/tests/.cache/
 /tests/data/icat.cfg
