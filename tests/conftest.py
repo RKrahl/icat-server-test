@@ -22,7 +22,6 @@ from icat.query import Query
 logging.basicConfig(level=logging.INFO)
 
 testdir = os.path.dirname(__file__)
-icatingest = "/usr/bin/icatingest"
 
 
 # ============================= helper ===============================
@@ -153,10 +152,19 @@ def standardConfig():
 testcontent = gettestdata("icatdump.yaml")
 
 @pytest.fixture(scope="session")
-def setupicat(standardConfig):
+def setupicat(standardConfig, request):
     require_icat_version("4.4.0", "need InvestigationGroup")
     client = icat.Client(standardConfig.url, **standardConfig.client_kwargs)
     client.login(standardConfig.auth, standardConfig.credentials)
     wipe_all(client)
+    icatingest = request.config.getini('icatingest')
     args = standardConfig.cmdargs + ["-f", "YAML", "-i", testcontent]
     callscript(icatingest, args)
+
+
+# ============================= hooks ================================
+
+
+def pytest_addoption(parser):
+    parser.addini('icatingest', 'path to the icatingest command')
+

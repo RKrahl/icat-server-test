@@ -37,6 +37,9 @@ directory.
 from the test server and replace it with example content.  Do not
 configure the tests to access a production server!
 
+Furthermore there are some settings in tests/pytest.ini that you might
+need to tweak.
+
 
 Usage
 -----
