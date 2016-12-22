@@ -4,11 +4,12 @@
 from __future__ import print_function
 import sys
 import os.path
+import datetime
+import logging
 import re
 from random import getrandbits
 import zlib
 import subprocess
-import logging
 from distutils.version import StrictVersion as Version
 import pytest
 import icat
@@ -17,12 +18,20 @@ from icat.ids import DataSelection
 from icat.query import Query
 
 
-# Note that pytest captures stderr, so we won't see any logging by
-# default.  But since Suds uses logging, it's better to still have
-# a well defined basic logging configuration in place.
-logging.basicConfig(level=logging.INFO)
-
 testdir = os.path.dirname(__file__)
+maindir = os.path.dirname(testdir)
+
+
+# ============================ logging ===============================
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("test")
+timestamp = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
+logfilename = os.path.join(maindir, "test-%s.log" % timestamp)
+logfile = logging.FileHandler(logfilename, mode='wt')
+logfile.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+logger.addHandler(logfile)
 
 
 # ============================= helper ===============================
