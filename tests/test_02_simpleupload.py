@@ -2,6 +2,8 @@
 """
 
 from __future__ import print_function
+import logging
+from timeit import default_timer as timer
 import tempfile
 import zipfile
 import pytest
@@ -11,6 +13,9 @@ from icat.query import Query
 from icat.ids import DataSelection
 from icat.exception import SearchAssertionError
 from conftest import getConfig, wipe_datafiles, DummyDatafile
+
+
+log = logging.getLogger("test.%s" % __name__)
 
 
 # ============================ testdata ============================
@@ -73,18 +78,23 @@ def client(setupicat, testConfig, request):
 def copyfile(infile, outfile, chunksize=8192):
     """Read all data from infile and write them to outfile.
     """
+    size = 0
     while True:
         chunk = infile.read(chunksize)
         if not chunk:
             break
         outfile.write(chunk)
+        size += len(chunk)
+    return size
 
 # ============================= tests ==============================
 
 def test_upload(client, testConfig):
     testFSize = testConfig.baseSize // testFCount
+    testTotalSize = testFCount * testFSize
     dataset = createDataset(client, testConfig.moduleName)
     datafileformat = getDatafileFormat(client)
+    start = timer()
     for n in range(1,testFCount+1):
         name = "test_%05d.dat" % n
         f = DummyDatafile(testFSize)
@@ -97,13 +107,19 @@ def test_upload(client, testConfig):
         assert df.fileSize == f.size
         assert df.checksum == crc
         testDatafiles.append({"name": name, "size": f.size, "crc": crc})
+    end = timer()
+    elapsed = end - start
+    log.info("Uploaded %d bytes in %f seconds (%f bytes/s)", 
+             testTotalSize, elapsed, (testTotalSize/elapsed))
 
 def test_download(client):
     dataset = getDataset(client)
     print("\nDownload dataset %s" % testDSName)
-    response = client.getData([dataset])
     with tempfile.TemporaryFile() as f:
-        copyfile(response, f)
+        start = timer()
+        response = client.getData([dataset])
+        size = copyfile(response, f)
+        end = timer()
         zf = zipfile.ZipFile(f, 'r')
         zinfos = zf.infolist()
         assert len(zinfos) == len(testDatafiles)
@@ -116,3 +132,6 @@ def test_download(client):
             assert zi is not None
             assert "%x" % (zi.CRC & 0xffffffff) == df['crc']
             assert zi.file_size == df['size']
+    elapsed = end - start
+    log.info("Downloaded %d bytes in %f seconds (%f bytes/s)", 
+             size, elapsed, (size/elapsed))
