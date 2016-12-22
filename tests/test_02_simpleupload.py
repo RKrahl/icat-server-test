@@ -16,13 +16,15 @@ from conftest import getConfig, wipe_datafiles, DummyDatafile
 # ============================ testdata ============================
 
 testInvestigation = "12100409-ST"
-testDSName = "testUpload"
 testFCount = 5
+testDSName = None
 testDatafiles = []
 
 # ============================= helper =============================
 
-def createDataset(client):
+def createDataset(client, dsname):
+    global testDSName
+    testDSName = dsname
     query = Query(client, "Investigation", conditions={
         "name": "= '%s'" % testInvestigation,
     })
@@ -81,7 +83,7 @@ def copyfile(infile, outfile, chunksize=8192):
 
 def test_upload(client, testConfig):
     testFSize = testConfig.baseSize // testFCount
-    dataset = createDataset(client)
+    dataset = createDataset(client, testConfig.moduleName)
     datafileformat = getDatafileFormat(client)
     for n in range(1,testFCount+1):
         name = "test_%05d.dat" % n

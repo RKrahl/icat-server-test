@@ -162,10 +162,11 @@ class TestConfig(object):
             raise ValueError("Invalid size string '%s'" % sizeStr)
         return int(m.group(1)) * cls.size[m.group(2)]
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def testConfig(request):
     config = request.config
     conf = TestConfig()
+    conf.moduleName = request.node.module.__name__
     conf.baseSize = conf.getSize(config.getini('basesize'))
     conf.cleanup = icat.config.boolean(config.getini('cleanup'))
     return conf
