@@ -15,15 +15,8 @@ from conftest import getConfig, wipe_datafiles, DummyDatafile
 
 # ============================ testdata ============================
 
-sizeB = 1
-sizeKiB = 1024*sizeB
-sizeMiB = 1024*sizeKiB
-sizeGiB = 1024*sizeMiB
-sizeTiB = 1024*sizeGiB
-
 testInvestigation = "12100409-ST"
 testDSName = "testUpload"
-testFSize = 1*sizeGiB
 testFCount = 5
 testDatafiles = []
 
@@ -57,7 +50,7 @@ def getDatafileFormat(client):
     return (client.assertedSearch(query)[0])
 
 @pytest.fixture(scope="module")
-def client(setupicat, request):
+def client(setupicat, testConfig, request):
     conf = getConfig(ids="mandatory")
     client = icat.Client(conf.url, **conf.client_kwargs)
     client.login(conf.auth, conf.credentials)
@@ -71,7 +64,8 @@ def client(setupicat, request):
                           conditions={"dataset.id": "= %d" % dataset.id})
             wipe_datafiles(client, query)
             client.delete(dataset)
-    request.addfinalizer(cleanup)
+    if testConfig.cleanup:
+        request.addfinalizer(cleanup)
     return client
 
 def copyfile(infile, outfile, chunksize=8192):
@@ -85,7 +79,8 @@ def copyfile(infile, outfile, chunksize=8192):
 
 # ============================= tests ==============================
 
-def test_upload(client):
+def test_upload(client, testConfig):
+    testFSize = testConfig.baseSize // testFCount
     dataset = createDataset(client)
     datafileformat = getDatafileFormat(client)
     for n in range(1,testFCount+1):

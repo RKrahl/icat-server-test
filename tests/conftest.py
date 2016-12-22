@@ -4,6 +4,7 @@
 from __future__ import print_function
 import sys
 import os.path
+import re
 from random import getrandbits
 import zlib
 import subprocess
@@ -144,6 +145,32 @@ def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
 # ============================ fixtures ==============================
 
 
+class TestConfig(object):
+    """Define a name space to hold configuration parameter."""
+    sizeB = 1
+    sizeKiB = 1024*sizeB
+    sizeMiB = 1024*sizeKiB
+    sizeGiB = 1024*sizeMiB
+    sizeTiB = 1024*sizeGiB
+    size = { 'B':sizeB, 'KiB':sizeKiB, 'MiB':sizeMiB, 
+             'GiB':sizeGiB, 'TiB':sizeTiB, }
+
+    @classmethod
+    def getSize(cls, sizeStr):
+        m = re.match(r'^(\d+)\s*(B|KiB|MiB|GiB|TiB)$', sizeStr)
+        if not m:
+            raise ValueError("Invalid size string '%s'" % sizeStr)
+        return int(m.group(1)) * cls.size[m.group(2)]
+
+@pytest.fixture(scope="session")
+def testConfig(request):
+    config = request.config
+    conf = TestConfig()
+    conf.baseSize = conf.getSize(config.getini('basesize'))
+    conf.cleanup = icat.config.boolean(config.getini('cleanup'))
+    return conf
+
+
 @pytest.fixture(scope="session")
 def standardConfig():
     return getConfig(ids="optional")
@@ -167,4 +194,6 @@ def setupicat(standardConfig, request):
 
 def pytest_addoption(parser):
     parser.addini('icatingest', 'path to the icatingest command')
+    parser.addini('basesize', 'base size of the tests')
+    parser.addini('cleanup', 'delete uploaded data after each test')
 
