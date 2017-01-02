@@ -85,7 +85,7 @@ def getConfig(confSection="root", **confArgs):
 
 
 def get_icat_version():
-    conf = getConfig(ids="optional", needlogin=False)
+    conf = getConfig(ids="mandatory", needlogin=False)
     client = icat.Client(conf.url, **conf.client_kwargs)
     return (client.apiversion, client.ids.apiversion)
 
