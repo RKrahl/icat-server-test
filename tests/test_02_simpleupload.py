@@ -22,7 +22,7 @@ log = logging.getLogger("test.%s" % __name__)
 # ============================ testdata ============================
 
 testInvestigation = "12100409-ST"
-testFCount = 5
+testFCount = 10
 testDSName = None
 testDatafiles = []
 
@@ -91,7 +91,7 @@ def copyfile(infile, outfile, chunksize=8192):
 # ============================= tests ==============================
 
 def test_upload(client, testConfig):
-    testFSize = testConfig.baseSize // testFCount
+    testFSize = testConfig.baseSize // (1024*testFCount)
     testTotalSize = MemorySpace(testFCount * testFSize)
     dataset = createDataset(client, testConfig.moduleName)
     datafileformat = getDatafileFormat(client)
