@@ -13,6 +13,7 @@ from icat.query import Query
 from icat.ids import DataSelection
 from icat.exception import SearchAssertionError
 from conftest import getConfig, wipe_datafiles, DummyDatafile
+from conftest import Time, MemorySpace
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -91,7 +92,7 @@ def copyfile(infile, outfile, chunksize=8192):
 
 def test_upload(client, testConfig):
     testFSize = testConfig.baseSize // testFCount
-    testTotalSize = testFCount * testFSize
+    testTotalSize = MemorySpace(testFCount * testFSize)
     dataset = createDataset(client, testConfig.moduleName)
     datafileformat = getDatafileFormat(client)
     start = timer()
@@ -108,9 +109,9 @@ def test_upload(client, testConfig):
         assert df.checksum == crc
         testDatafiles.append({"name": name, "size": f.size, "crc": crc})
     end = timer()
-    elapsed = end - start
-    log.info("Uploaded %d bytes in %f seconds (%f bytes/s)", 
-             testTotalSize, elapsed, (testTotalSize/elapsed))
+    elapsed = Time(end - start)
+    log.info("Uploaded %s in %s (%s/s)", 
+             testTotalSize, elapsed, MemorySpace(testTotalSize/elapsed))
 
 def test_download(client):
     dataset = getDataset(client)
@@ -118,7 +119,7 @@ def test_download(client):
     with tempfile.TemporaryFile() as f:
         start = timer()
         response = client.getData([dataset])
-        size = copyfile(response, f)
+        size = MemorySpace(copyfile(response, f))
         end = timer()
         zf = zipfile.ZipFile(f, 'r')
         zinfos = zf.infolist()
@@ -132,6 +133,6 @@ def test_download(client):
             assert zi is not None
             assert "%x" % (zi.CRC & 0xffffffff) == df['crc']
             assert zi.file_size == df['size']
-    elapsed = end - start
-    log.info("Downloaded %d bytes in %f seconds (%f bytes/s)", 
-             size, elapsed, (size/elapsed))
+    elapsed = Time(end - start)
+    log.info("Downloaded %s in %s (%s/s)", 
+             size, elapsed, MemorySpace(size/elapsed))

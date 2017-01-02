@@ -1,7 +1,7 @@
 """pytest configuration.
 """
 
-from __future__ import print_function
+from __future__ import print_function, division
 import sys
 import os.path
 import datetime
@@ -35,6 +35,70 @@ logger.addHandler(logfile)
 
 
 # ============================= helper ===============================
+
+
+class Time(float):
+    """Convenience: human readable time intervals.
+    """
+    second = 1
+    minute = 60*second
+    hour = 60*minute
+    day = 24*hour
+    millisecond = (1/1000)*second
+    units = { 'ms':millisecond, 's':second, 'min':minute, 'h':hour, 'd':day, }
+
+    def __new__(cls, value):
+        if isinstance(value, str):
+            m = re.match(r'^(\d+(?:\.\d+)?)\s*(ms|s|min|h|d)$', value)
+            if not m:
+                raise ValueError("Invalid time string '%s'" % value)
+            v = float(m.group(1)) * cls.units[m.group(2)]
+            return super(Time, cls).__new__(cls, v)
+        else:
+            v = float(value)
+            if v < 0:
+                raise ValueError("Invalid time value %f" % v)
+            return super(Time, cls).__new__(cls, v)
+
+    def __str__(self):
+        for u in ['d', 'h', 'min', 's']:
+            if self >= self.units[u]:
+                return "%.3f %s" % (self / self.units[u], u)
+        else:
+            return "%.3f ms" % (self / self.units['ms'])
+
+class MemorySpace(int):
+    """Convenience: human readable amounts of memory space.
+    """
+    sizeB = 1
+    sizeKiB = 1024*sizeB
+    sizeMiB = 1024*sizeKiB
+    sizeGiB = 1024*sizeMiB
+    sizeTiB = 1024*sizeGiB
+    sizePiB = 1024*sizeTiB
+    units = { 'B':sizeB, 'KiB':sizeKiB, 'MiB':sizeMiB, 
+              'GiB':sizeGiB, 'TiB':sizeTiB, 'PiB':sizePiB, }
+
+    def __new__(cls, value):
+        if isinstance(value, str):
+            m = re.match(r'^(\d+(?:\.\d+)?)\s*(B|KiB|MiB|GiB|TiB|PiB)$', value)
+            if not m:
+                raise ValueError("Invalid size string '%s'" % value)
+            v = float(m.group(1)) * cls.units[m.group(2)]
+            return super(MemorySpace, cls).__new__(cls, v)
+        else:
+            v = int(value)
+            if v < 0:
+                raise ValueError("Invalid size value %d" % v)
+            return super(MemorySpace, cls).__new__(cls, v)
+
+    def __str__(self):
+        for u in ['PiB', 'TiB', 'GiB', 'MiB', 'KiB']:
+            if self >= self.units[u]:
+                return "%.2f %s" % (self / self.units[u], u)
+        else:
+            return "%d B" % (int(self))
+
 
 
 if sys.version_info < (3, 0):
@@ -156,27 +220,14 @@ def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
 
 class TestConfig(object):
     """Define a name space to hold configuration parameter."""
-    sizeB = 1
-    sizeKiB = 1024*sizeB
-    sizeMiB = 1024*sizeKiB
-    sizeGiB = 1024*sizeMiB
-    sizeTiB = 1024*sizeGiB
-    size = { 'B':sizeB, 'KiB':sizeKiB, 'MiB':sizeMiB, 
-             'GiB':sizeGiB, 'TiB':sizeTiB, }
-
-    @classmethod
-    def getSize(cls, sizeStr):
-        m = re.match(r'^(\d+)\s*(B|KiB|MiB|GiB|TiB)$', sizeStr)
-        if not m:
-            raise ValueError("Invalid size string '%s'" % sizeStr)
-        return int(m.group(1)) * cls.size[m.group(2)]
+    pass
 
 @pytest.fixture(scope="module")
 def testConfig(request):
     config = request.config
     conf = TestConfig()
     conf.moduleName = request.node.module.__name__
-    conf.baseSize = conf.getSize(config.getini('basesize'))
+    conf.baseSize = MemorySpace(config.getini('basesize'))
     conf.cleanup = icat.config.boolean(config.getini('cleanup'))
     return conf
 
