@@ -179,22 +179,47 @@ def require_ids_version(minversion, reason):
                     % (minversion, reason))
 
 
-def wipe_datafiles(client, query):
+def wipe_data(client, query):
     """Delete all datafiles from IDS that match the query.
+    The query must be a Query object and may return either Datafiles,
+    Datasets, or entire Investigations.
     """
-    require_ids_version("1.3.0", "Issue #14")
+    require_ids_version("1.6.0", "Issue #42")
+
+    alldfquery = Query(client, "Datafile", limit=(0,1))
+    objdfquery = Query(client, "Datafile", limit=(0,1))
+    if query.entity.BeanName == 'Datafile':
+        alldfquery.addConditions(query.conditions)
+        objdfquery = None
+    elif query.entity.BeanName == 'Dataset':
+        conditions = {}
+        for a,c in query.conditions.items():
+            conditions["dataset.%s" % a] = c
+        alldfquery.addConditions(conditions)
+        objdfquery.addConditions({"dataset.id": "= %d"})
+    elif query.entity.BeanName == 'Investigation':
+        conditions = {}
+        for a,c in query.conditions.items():
+            conditions["dataset.investigation.%s" % a] = c
+        alldfquery.addConditions(conditions)
+        objdfquery.addConditions({"dataset.investigation.id": "= %d"})
+    else:
+        raise ValueError("Invalid query '%s'" % query)
+
     while True:
-        for df in client.searchChunked(query):
-            selection = DataSelection([df])
+        for obj in client.searchChunked(query):
+            if objdfquery and not client.search(str(objdfquery) % obj.id):
+                continue
+            selection = DataSelection([obj])
             if client.ids.getStatus(selection) == "ONLINE":
                 client.deleteData(selection)
-        for df in client.searchChunked(query):
-            selection = DataSelection([df])
+        for obj in client.searchChunked(query):
+            if objdfquery and not client.search(str(objdfquery) % obj.id):
+                continue
+            selection = DataSelection([obj])
             if client.ids.getStatus(selection) == "ARCHIVED":
                 client.ids.restore(selection)
-        q = query.copy()
-        q.setLimit( (0,1) )
-        if client.search(q):
+        if client.search(alldfquery):
             time.sleep(10)
         else:
             break
@@ -204,7 +229,7 @@ def wipe_all(client):
     """
     require_icat_version("4.4.0", "Need extended root permission")
     query = Query(client, "Datafile", conditions={"location": "IS NOT NULL"})
-    wipe_datafiles(client, query)
+    wipe_data(client, query)
     tables = ["Investigation", "Facility"] + client.getEntityNames()
     for t in tables:
         query = Query(client, t, limit=(0, 200))

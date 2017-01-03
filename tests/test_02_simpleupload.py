@@ -12,7 +12,7 @@ import icat.config
 from icat.query import Query
 from icat.ids import DataSelection
 from icat.exception import SearchAssertionError
-from conftest import getConfig, wipe_datafiles, DummyDatafile
+from conftest import getConfig, wipe_data, DummyDatafile
 from conftest import Time, MemorySpace
 
 
@@ -68,9 +68,9 @@ def client(setupicat, testConfig, request):
         except SearchAssertionError:
             pass
         else:
-            query = Query(client, "Datafile", 
-                          conditions={"dataset.id": "= %d" % dataset.id})
-            wipe_datafiles(client, query)
+            query = Query(client, "Dataset", 
+                          conditions={"id": "in (%d)" % dataset.id})
+            wipe_data(client, query)
             client.delete(dataset)
     if testConfig.cleanup:
         request.addfinalizer(cleanup)

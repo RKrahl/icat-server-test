@@ -13,7 +13,7 @@ import icat
 import icat.config
 from icat.query import Query
 from icat.exception import SearchAssertionError, IDSDataNotOnlineError
-from conftest import getConfig, wipe_datafiles, DummyDatafile
+from conftest import getConfig, wipe_data, DummyDatafile
 from conftest import Time, MemorySpace
 
 
@@ -148,13 +148,11 @@ def client(setupicat, testConfig, request):
     client = icat.Client(conf.url, **conf.client_kwargs)
     client.login(conf.auth, conf.credentials)
     def cleanup():
-        query = Query(client, "Datafile", conditions={
-            "dataset.name": "LIKE '%s-%%'" % testConfig.moduleName
-        })
-        wipe_datafiles(client, query)
         query = Query(client, "Dataset", conditions={
             "name": "LIKE '%s-%%'" % testConfig.moduleName
-        }, limit=(0,200))
+        })
+        wipe_data(client, query)
+        query.setLimit( (0,500) )
         while True:
             objs = client.search(query)
             if not objs:
