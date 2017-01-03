@@ -99,6 +99,11 @@ class MemorySpace(int):
         else:
             return "%d B" % (int(self))
 
+    def __rmul__(self, other):
+        if type(other) == int:
+            return MemorySpace(other*int(self))
+        else:
+            return super(MemorySpace, self).__rmul__(self, other)
 
 
 if sys.version_info < (3, 0):
