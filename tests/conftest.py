@@ -3,6 +3,7 @@
 
 from __future__ import print_function, division
 import sys
+import time
 import os.path
 import datetime
 import logging
@@ -32,6 +33,7 @@ logfilename = os.path.join(maindir, "test-%s.log" % timestamp)
 logfile = logging.FileHandler(logfilename, mode='wt')
 logfile.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
 logger.addHandler(logfile)
+logger.propagate = False
 
 
 # ============================= helper ===============================
