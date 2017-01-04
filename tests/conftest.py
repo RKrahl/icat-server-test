@@ -268,7 +268,7 @@ class DummyDatafile(object):
         return "%x" % (self.crc32 & 0xffffffff)
 
 
-class Dataset(object):
+class DatasetBase(object):
     """A test dataset.
 
     Upload and download a set of random data files.

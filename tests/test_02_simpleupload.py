@@ -6,7 +6,7 @@ import pytest
 import icat
 import icat.config
 from icat.query import Query
-from conftest import getConfig, wipe_data, Dataset, MemorySpace
+from conftest import getConfig, wipe_data, DatasetBase, MemorySpace
 
 
 # ============================ testdata ============================
@@ -24,7 +24,7 @@ def createDatasets(client, testConfig):
     inv = client.assertedSearch(query)[0]
     name = testConfig.moduleName
     testFSize = MemorySpace(testConfig.baseSize // (1024*testFCount))
-    testDatasets.append(Dataset(client, inv, name, testFCount, testFSize))
+    testDatasets.append(DatasetBase(client, inv, name, testFCount, testFSize))
 
 @pytest.fixture(scope="module")
 def client(setupicat, testConfig, request):

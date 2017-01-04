@@ -9,7 +9,7 @@ import pytest
 import icat
 import icat.config
 from icat.query import Query
-from conftest import getConfig, wipe_data, Dataset, Time, MemorySpace
+from conftest import getConfig, wipe_data, DatasetBase, Time, MemorySpace
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -20,15 +20,15 @@ log = logging.getLogger("test.%s" % __name__)
 testInvestigation = "12100409-ST"
 testDatasets = []
 
-class SmallDataset(Dataset):
+class SmallDataset(DatasetBase):
     fileCount = 4
     fileSize = MemorySpace("512 KiB")
 
-class ManyFileDataset(Dataset):
+class ManyFileDataset(DatasetBase):
     fileCount = 1000
     fileSize = MemorySpace("51.2 KiB")
 
-class BigDataset(Dataset):
+class BigDataset(DatasetBase):
     fileCount = 2
     fileSize = MemorySpace("1 GiB")
 
