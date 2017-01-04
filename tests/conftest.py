@@ -274,6 +274,8 @@ class Dataset(object):
     Upload and download a set of random data files.
     """
 
+    fileCount = None
+    fileSize = None
     _datafileFormat = None
     _datasetType = None
 
@@ -291,11 +293,24 @@ class Dataset(object):
             cls._datasetType = client.assertedSearch(query)[0]
         return cls._datasetType
 
-    def __init__(self, client, investigation, name, fileCount, fileSize):
+    @classmethod
+    def getSize(cls):
+        assert cls.fileCount is not None
+        assert cls.fileSize is not None
+        return cls.fileCount*cls.fileSize
+
+    def __init__(self, client, investigation, name, 
+                 fileCount=None, fileSize=None):
         self.name = name
-        self.fileCount = fileCount
-        self.fileSize = fileSize
-        self.size = fileCount*fileSize
+        if fileCount:
+            self.fileCount = fileCount
+        else:
+            assert self.fileCount is not None
+        if fileSize:
+            self.fileSize = fileSize
+        else:
+            assert self.fileSize is not None
+        self.size = self.fileCount*self.fileSize
 
         datasetType = self.getDatasetType(client)
         dataset = client.new("dataset", name=self.name, complete=False, 

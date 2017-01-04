@@ -21,37 +21,31 @@ testInvestigation = "12100409-ST"
 testDatasets = []
 
 class SmallDataset(Dataset):
-    size = 4*MemorySpace("512 KiB")
-    def __init__(self, client, inv, name):
-        s = MemorySpace("512 KiB")
-        super(SmallDataset, self).__init__(client, inv, name, 4, s)
+    fileCount = 4
+    fileSize = MemorySpace("512 KiB")
 
 class ManyFileDataset(Dataset):
-    size = 1000*MemorySpace("51.2 KiB")
-    def __init__(self, client, inv, name):
-        s = MemorySpace("51.2 KiB")
-        super(ManyFileDataset, self).__init__(client, inv, name, 1000, s)
+    fileCount = 1000
+    fileSize = MemorySpace("51.2 KiB")
 
 class BigDataset(Dataset):
-    size = 2*MemorySpace("1 GiB")
-    def __init__(self, client, inv, name):
-        s = MemorySpace("1 GiB")
-        super(BigDataset, self).__init__(client, inv, name, 2, s)
+    fileCount = 2
+    fileSize = MemorySpace("1 GiB")
 
 def createDatasets(client, testConfig):
     query = Query(client, "Investigation", conditions={
         "name": "= '%s'" % testInvestigation,
     })
     inv = client.assertedSearch(query)[0]
-    count = int(0.8*testConfig.baseSize/SmallDataset.size)
+    count = int(0.8*testConfig.baseSize/SmallDataset.getSize())
     for i in range(1, count+1):
         name = "%s-a%05d" % (testConfig.moduleName, i)
         testDatasets.append(SmallDataset(client, inv, name))
-    count = int(0.2*testConfig.baseSize/ManyFileDataset.size)
+    count = int(0.2*testConfig.baseSize/ManyFileDataset.getSize())
     for i in range(1, count+1):
         name = "%s-b%05d" % (testConfig.moduleName, i)
         testDatasets.append(ManyFileDataset(client, inv, name))
-    count = int(9.0*testConfig.baseSize/BigDataset.size)
+    count = int(9.0*testConfig.baseSize/BigDataset.getSize())
     for i in range(1, count+1):
         name = "%s-c%05d" % (testConfig.moduleName, i)
         testDatasets.append(BigDataset(client, inv, name))
