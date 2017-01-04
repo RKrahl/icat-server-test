@@ -4,12 +4,15 @@
 from __future__ import print_function, division
 import sys
 import time
+from timeit import default_timer as timer
 import os.path
 import datetime
 import logging
 import re
 from random import getrandbits
 import zlib
+import tempfile
+import zipfile
 import subprocess
 from distutils.version import StrictVersion as Version
 import pytest
@@ -17,6 +20,7 @@ import icat
 import icat.config
 from icat.ids import DataSelection
 from icat.query import Query
+from icat.exception import IDSDataNotOnlineError
 
 
 testdir = os.path.dirname(__file__)
@@ -27,13 +31,13 @@ maindir = os.path.dirname(testdir)
 
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("test")
+log = logging.getLogger("test")
 timestamp = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 logfilename = os.path.join(maindir, "test-%s.log" % timestamp)
 logfile = logging.FileHandler(logfilename, mode='wt')
 logfile.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
-logger.addHandler(logfile)
-logger.propagate = False
+log.addHandler(logfile)
+log.propagate = False
 
 
 # ============================= helper ===============================
@@ -115,29 +119,24 @@ else:
     def buf(seq):
         return bytearray(seq)
 
-class DummyDatafile(object):
-    """A dummy readable with random content to be used for test upload.
-    """
-    def __init__(self, size):
-        self.size = size
-        self._delivered = 0
-        self.crc32 = 0
-    def read(self, n):
-        remaining = self.size - self._delivered
-        if n < 0 or n > remaining:
-            n = remaining
-        chunk = buf(getrandbits(8) for _ in range(n))
-        self.crc32 = zlib.crc32(chunk, self.crc32)
-        self._delivered += n
-        return chunk
-    def getcrc(self):
-        return "%x" % (self.crc32 & 0xffffffff)
-
 
 def gettestdata(fname):
     fname = os.path.join(testdir, "data", fname)
     assert os.path.isfile(fname)
     return fname
+
+
+def copyfile(infile, outfile, chunksize=8192):
+    """Read all data from infile and write them to outfile.
+    """
+    size = 0
+    while True:
+        chunk = infile.read(chunksize)
+        if not chunk:
+            break
+        outfile.write(chunk)
+        size += len(chunk)
+    return size
 
 
 def getConfig(confSection="root", **confArgs):
@@ -245,6 +244,119 @@ def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
     cmd = [sys.executable, script] + args
     print("\n>", *cmd)
     subprocess.check_call(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
+
+
+# =========================== test data ==============================
+
+
+class DummyDatafile(object):
+    """A dummy readable with random content.
+    """
+    def __init__(self, size):
+        self.size = size
+        self._delivered = 0
+        self.crc32 = 0
+    def read(self, n):
+        remaining = self.size - self._delivered
+        if n < 0 or n > remaining:
+            n = remaining
+        chunk = buf(getrandbits(8) for _ in range(n))
+        self.crc32 = zlib.crc32(chunk, self.crc32)
+        self._delivered += n
+        return chunk
+    def getcrc(self):
+        return "%x" % (self.crc32 & 0xffffffff)
+
+
+class Dataset(object):
+    """A test dataset.
+
+    Upload and download a set of random data files.
+    """
+
+    _datafileFormat = None
+    _datasetType = None
+
+    @classmethod
+    def getDatafileFormat(cls, client):
+        if not cls._datafileFormat:
+            query = "SELECT o FROM DatafileFormat o WHERE o.name = 'raw'"
+            cls._datafileFormat = client.assertedSearch(query)[0]
+        return cls._datafileFormat
+
+    @classmethod
+    def getDatasetType(cls, client):
+        if not cls._datasetType:
+            query = "SELECT o FROM DatasetType o WHERE o.name = 'raw'"
+            cls._datasetType = client.assertedSearch(query)[0]
+        return cls._datasetType
+
+    def __init__(self, client, investigation, name, fileCount, fileSize):
+        self.name = name
+        self.fileCount = fileCount
+        self.fileSize = fileSize
+        self.size = fileCount*fileSize
+
+        datasetType = self.getDatasetType(client)
+        dataset = client.new("dataset", name=self.name, complete=False, 
+                             investigation=investigation, type=datasetType)
+        dataset.create()
+        dataset.truncateRelations()
+        self.dataset = dataset
+
+    def uploadFiles(self, client):
+        datafileFormat = self.getDatafileFormat(client)
+        start = timer()
+        for n in range(1,self.fileCount+1):
+            name = "test_%05d.dat" % n
+            f = DummyDatafile(self.fileSize)
+            datafile = client.new("datafile",
+                                  name=name,
+                                  dataset=self.dataset,
+                                  datafileFormat=datafileFormat)
+            df = client.putData(f, datafile)
+            crc = f.getcrc()
+            assert df.location is not None
+            assert df.fileSize == self.fileSize
+            assert df.checksum == crc
+        end = timer()
+        elapsed = Time(end - start)
+        log.info("Uploaded %s to dataset %s in %s (%s/s)", 
+                 self.size, self.name, elapsed, MemorySpace(self.size/elapsed))
+
+    def download(self, client):
+        query = Query(client, "Datafile", conditions={
+            "dataset.id": "= %d" % self.dataset.id,
+        })
+        datafiles = client.search(query)
+        assert len(datafiles) == self.fileCount
+        with tempfile.TemporaryFile() as f:
+            start = timer()
+            while True:
+                try:
+                    response = client.getData([self.dataset])
+                    break
+                except IDSDataNotOnlineError:
+                    log.info("Wait for dataset %s to become online.", 
+                             self.name)
+                    time.sleep(1)
+            size = MemorySpace(copyfile(response, f))
+            end = timer()
+            zf = zipfile.ZipFile(f, 'r')
+            zinfos = zf.infolist()
+            assert len(zinfos) == len(datafiles)
+            for df in datafiles:
+                zi = None
+                for i in zinfos:
+                    if i.filename.endswith(df.name):
+                        zi = i
+                        break
+                assert zi is not None
+                assert "%x" % (zi.CRC & 0xffffffff) == df.checksum
+                assert zi.file_size == df.fileSize
+        elapsed = Time(end - start)
+        log.info("Downloaded %s for dataset %s in %s (%s/s)", 
+                 self.size, self.name, elapsed, MemorySpace(self.size/elapsed))
 
 
 # ============================ fixtures ==============================
