@@ -2,8 +2,12 @@
 """
 
 from __future__ import print_function
+import sys
 import threading
-import queue
+if sys.version_info < (3, 0):
+    import Queue as queue
+else:
+    import queue
 import random
 import logging
 from timeit import default_timer as timer
