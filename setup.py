@@ -3,6 +3,7 @@
 from distutils.core import setup
 from distutils import log
 import distutils.command.install
+import subprocess
 import distutils_pytest
 
 # Do nothing dummy.
@@ -11,10 +12,14 @@ class install(distutils.command.install.install):
         """Runs the command."""
         log.info("there is nothing to install here.")
 
+gitcmd = ["git", "describe", "--always", "--dirty"]
+proc = subprocess.Popen(["git", "describe", "--always", "--dirty"], 
+                        stdout=subprocess.PIPE)
+version = proc.communicate()[0].strip().decode('ascii')
 
 setup(
     name = "icat-server-test",
-    version = "0.1",
+    version = version,
     description = "A test suite for ICAT and IDS servers",
     author = "Rolf Krahl",
     author_email = "rolf.krahl@helmholtz-berlin.de",
