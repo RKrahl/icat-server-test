@@ -2,5 +2,6 @@ include MANIFEST.in
 include README.rst
 include icat.cfg
 include tests/conftest.py
+include tests/data/icatdump.yaml
 include tests/pytest.ini
 include tests/test_*.py
