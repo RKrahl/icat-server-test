@@ -44,10 +44,12 @@ def client(setupicat, testConfig, request):
 
 # ============================= tests ==============================
 
-def test_upload(client, testConfig):
+def test_upload(client, testConfig, stat):
     for dataset in testDatasets:
-        dataset.uploadFiles(client)
+        statitem = dataset.uploadFiles(client)
+        stat.add(statitem)
 
-def test_download(client):
+def test_download(client, stat):
     for dataset in testDatasets:
-        dataset.download(client)
+        statitem = dataset.download(client)
+        stat.add(statitem)

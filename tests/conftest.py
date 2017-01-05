@@ -15,6 +15,7 @@ import tempfile
 import zipfile
 import subprocess
 from distutils.version import StrictVersion as Version
+import yaml
 import pytest
 import icat
 import icat.config
@@ -27,17 +28,71 @@ testdir = os.path.dirname(__file__)
 maindir = os.path.dirname(testdir)
 
 
-# ============================ logging ===============================
+# ======================= logging and stats ==========================
+
+timestamp = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("test")
-timestamp = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 logfilename = os.path.join(maindir, "test-%s.log" % timestamp)
 logfile = logging.FileHandler(logfilename, mode='wt')
 logfile.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
 log.addHandler(logfile)
 log.propagate = False
+
+
+class StatItem(object):
+    def __init__(self, tag, name, size, time):
+        self.tag = tag
+        self.name = name
+        self.size = size
+        self.time = time
+    def as_dict(self):
+        return { 'name': self.name, 'size': self.size, 'time': self.time, }
+
+class StatFile(object):
+
+    def __init__(self, path):
+        self.stream = open(path, 'wt')
+        print("%YAML 1.1\n# Test statistics", file=self.stream)
+        self.stats = []
+
+    def add(self, item):
+        self.stats.append(item)
+
+    def write(self, modulename=None):
+        if self.stats:
+            tags = set([ i.tag for i in self.stats ])
+            stats = {}
+            for t in tags:
+                stats[t] = [ i.as_dict() for i in self.stats if i.tag == t ]
+            data = { 'stats': stats }
+            if modulename:
+                data['name'] = modulename
+            yaml.dump(data, self.stream, explicit_start=True)
+            self.stats = []
+
+    def close(self):
+        self.write()
+        self.stream.close()
+
+@pytest.fixture(scope="session")
+def statfile(request):
+    statfilename = os.path.join(maindir, "test-%s.yaml" % timestamp)
+    statfile = StatFile(statfilename)
+    def close():
+        statfile.close()
+    request.addfinalizer(close)
+    return statfile
+
+@pytest.fixture(scope="module")
+def stat(statfile, request):
+    def flush():
+        modulename = request.node.module.__name__
+        statfile.write(modulename)
+    request.addfinalizer(flush)
+    return statfile
 
 
 # ============================= helper ===============================
@@ -338,6 +393,7 @@ class DatasetBase(object):
         elapsed = Time(end - start)
         log.info("Uploaded %s to dataset %s in %s (%s/s)", 
                  self.size, self.name, elapsed, MemorySpace(self.size/elapsed))
+        return StatItem("upload", self.name, int(self.size), float(elapsed))
 
     def download(self, client):
         query = Query(client, "Datafile", conditions={
@@ -372,6 +428,7 @@ class DatasetBase(object):
         elapsed = Time(end - start)
         log.info("Downloaded %s for dataset %s in %s (%s/s)", 
                  self.size, self.name, elapsed, MemorySpace(self.size/elapsed))
+        return StatItem("download", self.name, int(self.size), float(elapsed))
 
 
 # ============================ fixtures ==============================

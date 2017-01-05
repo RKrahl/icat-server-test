@@ -1,8 +1,9 @@
 *.pyc
 *~
 __pycache__/
-/*.log
 /MANIFEST
 /dist/
+/test-*.log
+/test-*.yaml
 /tests/.cache/
 /tests/data/icat.cfg

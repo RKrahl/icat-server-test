@@ -11,7 +11,8 @@ import pytest
 import icat
 import icat.config
 from icat.query import Query
-from conftest import getConfig, wipe_data, DatasetBase, Time, MemorySpace
+from conftest import getConfig, wipe_data
+from conftest import StatItem, DatasetBase, Time, MemorySpace
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -61,10 +62,10 @@ def icatconfig(setupicat, testConfig, request):
 
 # ============================= tests ==============================
 
-def test_upload(icatconfig, testConfig):
+def test_upload(icatconfig, testConfig, stat):
 
     dsQueue = queue.Queue()
-    errQueue = queue.Queue()
+    resultQueue = queue.Queue()
 
     def uploadWorker(conf):
         client = icat.Client(conf.url, **conf.client_kwargs)
@@ -74,9 +75,10 @@ def test_upload(icatconfig, testConfig):
             if dataset is None:
                 break
             try:
-                dataset.uploadFiles(client)
+                statitem = dataset.uploadFiles(client)
+                resultQueue.put(statitem)
             except Exception as err:
-                errQueue.put(err)
+                resultQueue.put(err)
             dsQueue.task_done()
         client.logout()
 
@@ -92,16 +94,24 @@ def test_upload(icatconfig, testConfig):
         dsQueue.put(None)
     for t in threads:
         t.join()
-    try:
-        err = errQueue.get(block=False)
-        raise err
-    except queue.Empty:
-        pass
+    c = 0
+    while True:
+        try:
+            r = resultQueue.get(block=False)
+            c += 1
+            if isinstance(r, StatItem):
+                stat.add(r)
+            else:
+                raise r
+        except queue.Empty:
+            break
+    assert c == len(testDatasets)
 
-def test_download(icatconfig, testConfig):
+
+def test_download(icatconfig, testConfig, stat):
 
     dsQueue = queue.Queue()
-    errQueue = queue.Queue()
+    resultQueue = queue.Queue()
 
     def downloadWorker(conf):
         client = icat.Client(conf.url, **conf.client_kwargs)
@@ -111,9 +121,10 @@ def test_download(icatconfig, testConfig):
             if dataset is None:
                 break
             try:
-                dataset.download(client)
+                statitem = dataset.download(client)
+                resultQueue.put(statitem)
             except Exception as err:
-                errQueue.put(err)
+                resultQueue.put(err)
             dsQueue.task_done()
         client.logout()
 
@@ -130,8 +141,15 @@ def test_download(icatconfig, testConfig):
         dsQueue.put(None)
     for t in threads:
         t.join()
-    try:
-        err = errQueue.get(block=False)
-        raise err
-    except queue.Empty:
-        pass
+    c = 0
+    while True:
+        try:
+            r = resultQueue.get(block=False)
+            c += 1
+            if isinstance(r, StatItem):
+                stat.add(r)
+            else:
+                raise r
+        except queue.Empty:
+            break
+    assert c == count
