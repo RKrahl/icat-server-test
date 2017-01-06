@@ -311,12 +311,22 @@ class DummyDatafile(object):
         self.size = size
         self._delivered = 0
         self.crc32 = 0
-        self.data = data
+        if data == 'urandom':
+            self.data = open('/dev/urandom', 'rb')
+        else:
+            self.data = data
+    def close(self):
+        try:
+            self.data.close()
+        except AttributeError:
+            pass
     def read(self, n):
         remaining = self.size - self._delivered
         if n < 0 or n > remaining:
             n = remaining
-        if self.data == 'random':
+        if hasattr(self.data, 'read'):
+            chunk = self.data.read(n)
+        elif self.data == 'random':
             chunk = buf(getrandbits(8) for _ in range(n))
         elif self.data == 'zero':
             chunk = buf(n)
@@ -371,7 +381,7 @@ class DatasetBase(object):
             self.fileSize = fileSize
         else:
             assert self.fileSize is not None
-        assert data in ['random', 'zero']
+        assert data in ['random', 'urandom', 'zero']
         self.data = data
         self.size = self.fileCount*self.fileSize
 
@@ -397,6 +407,7 @@ class DatasetBase(object):
             assert df.location is not None
             assert df.fileSize == self.fileSize
             assert df.checksum == crc
+            f.close()
         end = timer()
         elapsed = Time(end - start)
         log.info("Uploaded %s to dataset %s in %s (%s/s)", 
