@@ -307,15 +307,21 @@ def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
 class DummyDatafile(object):
     """A dummy readable with random content.
     """
-    def __init__(self, size):
+    def __init__(self, size, data):
         self.size = size
         self._delivered = 0
         self.crc32 = 0
+        self.data = data
     def read(self, n):
         remaining = self.size - self._delivered
         if n < 0 or n > remaining:
             n = remaining
-        chunk = buf(getrandbits(8) for _ in range(n))
+        if self.data == 'random':
+            chunk = buf(getrandbits(8) for _ in range(n))
+        elif self.data == 'zero':
+            chunk = buf(n)
+        else:
+            raise ValueError("invalid data source '%s'" % self.data)
         self.crc32 = zlib.crc32(chunk, self.crc32)
         self._delivered += n
         return chunk
@@ -355,7 +361,7 @@ class DatasetBase(object):
         return cls.fileCount*cls.fileSize
 
     def __init__(self, client, investigation, name, 
-                 fileCount=None, fileSize=None):
+                 fileCount=None, fileSize=None, data='random'):
         self.name = name
         if fileCount:
             self.fileCount = fileCount
@@ -365,6 +371,8 @@ class DatasetBase(object):
             self.fileSize = fileSize
         else:
             assert self.fileSize is not None
+        assert data in ['random', 'zero']
+        self.data = data
         self.size = self.fileCount*self.fileSize
 
         datasetType = self.getDatasetType(client)
@@ -379,7 +387,7 @@ class DatasetBase(object):
         start = timer()
         for n in range(1,self.fileCount+1):
             name = "test_%05d.dat" % n
-            f = DummyDatafile(self.fileSize)
+            f = DummyDatafile(self.fileSize, self.data)
             datafile = client.new("datafile",
                                   name=name,
                                   dataset=self.dataset,
