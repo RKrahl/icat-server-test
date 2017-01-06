@@ -371,7 +371,7 @@ class DatasetBase(object):
         return cls.fileCount*cls.fileSize
 
     def __init__(self, client, investigation, name, 
-                 fileCount=None, fileSize=None, data='random'):
+                 fileCount=None, fileSize=None, data='urandom'):
         self.name = name
         if fileCount:
             self.fileCount = fileCount
