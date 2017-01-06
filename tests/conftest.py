@@ -169,7 +169,7 @@ class MemorySpace(int):
 
 if sys.version_info < (3, 0):
     def buf(seq):
-        return buffer(bytearray(seq))
+        return str(bytearray(seq))
 else:
     def buf(seq):
         return bytearray(seq)
