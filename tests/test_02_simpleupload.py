@@ -12,7 +12,6 @@ from conftest import getConfig, wipe_data, DatasetBase, MemorySpace
 # ============================ testdata ============================
 
 testInvestigation = "12100409-ST"
-testFCount = 10
 testDatasets = []
 
 # ============================= helper =============================
@@ -22,9 +21,12 @@ def createDatasets(client, testConfig):
         "name": "= '%s'" % testInvestigation,
     })
     inv = client.assertedSearch(query)[0]
-    name = testConfig.moduleName
-    testFSize = MemorySpace(testConfig.baseSize // (1024*testFCount))
-    testDatasets.append(DatasetBase(client, inv, name, testFCount, testFSize))
+    testFCount = 10
+    testFSize = MemorySpace(testConfig.baseSize // (10*testFCount))
+    for data in ['random', 'zero', 'urandom']:
+        name = "%s-%s" % (testConfig.moduleName, data)
+        testDatasets.append(DatasetBase(client, inv, name, 
+                                        testFCount, testFSize, data))
 
 @pytest.fixture(scope="module")
 def client(setupicat, testConfig, request):
