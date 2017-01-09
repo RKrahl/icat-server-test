@@ -35,7 +35,7 @@ def client(setupicat, testConfig, request):
     client.login(conf.auth, conf.credentials)
     def cleanup():
         query = Query(client, "Dataset", conditions={
-            "name": "= '%s'" % testConfig.moduleName
+            "name": "LIKE '%s-%%'" % testConfig.moduleName
         })
         wipe_data(client, query)
         client.deleteMany(client.search(query))
