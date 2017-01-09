@@ -25,6 +25,7 @@ log = logging.getLogger("test.%s" % __name__)
 # ============================ testdata ============================
 
 testInvestigation = "12100409-ST"
+testDatasetName = "test_parallel"
 testDatasets = []
 
 class Dataset(DatasetBase):
@@ -38,7 +39,7 @@ def createDatasets(client, testConfig):
     inv = client.assertedSearch(query)[0]
     count = int(10*testConfig.baseSize/Dataset.getSize())
     for i in range(1, count+1):
-        name = "%s-%05d" % (testConfig.moduleName, i)
+        name = "%s-%05d" % (testDatasetName, i)
         testDatasets.append(Dataset(client, inv, name))
 
 # ============================= helper =============================
@@ -50,7 +51,7 @@ def icatconfig(setupicat, testConfig, request):
     client.login(conf.auth, conf.credentials)
     def cleanup():
         query = Query(client, "Dataset", conditions={
-            "name": "LIKE '%s-%%'" % testConfig.moduleName
+            "name": "LIKE '%s-%%'" % testDatasetName
         })
         wipe_data(client, query)
         query.setLimit( (0,500) )

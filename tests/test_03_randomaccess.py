@@ -18,6 +18,7 @@ log = logging.getLogger("test.%s" % __name__)
 # ============================ testdata ============================
 
 testInvestigation = "12100409-ST"
+testDatasetName = "test_randomaccess"
 testDatasets = []
 
 class SmallDataset(DatasetBase):
@@ -39,15 +40,15 @@ def createDatasets(client, testConfig):
     inv = client.assertedSearch(query)[0]
     count = int(0.8*testConfig.baseSize/SmallDataset.getSize())
     for i in range(1, count+1):
-        name = "%s-a%05d" % (testConfig.moduleName, i)
+        name = "%s-a%05d" % (testDatasetName, i)
         testDatasets.append(SmallDataset(client, inv, name))
     count = int(0.2*testConfig.baseSize/ManyFileDataset.getSize())
     for i in range(1, count+1):
-        name = "%s-b%05d" % (testConfig.moduleName, i)
+        name = "%s-b%05d" % (testDatasetName, i)
         testDatasets.append(ManyFileDataset(client, inv, name))
     count = int(9.0*testConfig.baseSize/BigDataset.getSize())
     for i in range(1, count+1):
-        name = "%s-c%05d" % (testConfig.moduleName, i)
+        name = "%s-c%05d" % (testDatasetName, i)
         testDatasets.append(BigDataset(client, inv, name))
 
 # ============================= helper =============================
@@ -59,7 +60,7 @@ def client(setupicat, testConfig, request):
     client.login(conf.auth, conf.credentials)
     def cleanup():
         query = Query(client, "Dataset", conditions={
-            "name": "LIKE '%s-%%'" % testConfig.moduleName
+            "name": "LIKE '%s-%%'" % testDatasetName
         })
         wipe_data(client, query)
         query.setLimit( (0,500) )
