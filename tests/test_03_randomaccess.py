@@ -1,4 +1,4 @@
-"""Test upload a large amount of dataand download of files to and from IDS.
+"""Test upload and download a large amount of data to and from IDS.
 """
 
 from __future__ import print_function
@@ -38,15 +38,15 @@ def createDatasets(client, testConfig):
         "name": "= '%s'" % testInvestigation,
     })
     inv = client.assertedSearch(query)[0]
-    count = int(0.8*testConfig.baseSize/SmallDataset.getSize())
+    count = int(0.16*testConfig.baseSize/SmallDataset.getSize())
     for i in range(1, count+1):
         name = "%s-a%05d" % (testDatasetName, i)
         testDatasets.append(SmallDataset(client, inv, name))
-    count = int(0.2*testConfig.baseSize/ManyFileDataset.getSize())
+    count = int(0.04*testConfig.baseSize/ManyFileDataset.getSize())
     for i in range(1, count+1):
         name = "%s-b%05d" % (testDatasetName, i)
         testDatasets.append(ManyFileDataset(client, inv, name))
-    count = int(9.0*testConfig.baseSize/BigDataset.getSize())
+    count = int(1.80*testConfig.baseSize/BigDataset.getSize())
     for i in range(1, count+1):
         name = "%s-c%05d" % (testDatasetName, i)
         testDatasets.append(BigDataset(client, inv, name))
@@ -77,10 +77,15 @@ def client(setupicat, testConfig, request):
 # ============================= tests ==============================
 
 def test_upload(client, testConfig, stat):
+    hour = 60*60
     random.shuffle(testDatasets)
     totalsize = 0
     start = timer()
+    next_refresh = 0
     for dataset in testDatasets:
+        if timer() > next_refresh:
+            client.refresh()
+            next_refresh = timer()+hour
         statitem = dataset.uploadFiles(client)
         stat.add(statitem)
         totalsize += dataset.size
@@ -90,11 +95,16 @@ def test_upload(client, testConfig, stat):
              MemorySpace(totalsize), elapsed, MemorySpace(totalsize/elapsed))
 
 def test_download(client, stat):
+    hour = 60*60
     # Dowload each dataset five time in average
     count = 5*len(testDatasets)
     totalsize = 0
     start = timer()
+    next_refresh = 0
     for i in range(count):
+        if timer() > next_refresh:
+            client.refresh()
+            next_refresh = timer()+hour
         dataset = random.choice(testDatasets)
         statitem = dataset.download(client)
         stat.add(statitem)
