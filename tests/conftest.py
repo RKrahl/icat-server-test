@@ -465,7 +465,6 @@ def testConfig(request):
     conf.moduleName = request.node.module.__name__
     conf.baseSize = MemorySpace(config.getini('basesize'))
     conf.cleanup = icat.config.boolean(config.getini('cleanup'))
-    conf.numThreads = int(config.getini('numthreads'))
     return conf
 
 
@@ -494,5 +493,4 @@ def pytest_addoption(parser):
     parser.addini('icatingest', 'path to the icatingest command')
     parser.addini('basesize', 'base size of the tests')
     parser.addini('cleanup', 'delete uploaded data after each test')
-    parser.addini('numthreads', 'number of threads for parallel tests')
 
