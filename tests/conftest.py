@@ -37,7 +37,8 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("test")
 logfilename = os.path.join(maindir, "test-%s.log" % timestamp)
 logfile = logging.FileHandler(logfilename, mode='wt')
-logfile.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+logformatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
+logfile.setFormatter(logformatter)
 log.addHandler(logfile)
 log.propagate = False
 
