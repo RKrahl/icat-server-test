@@ -234,57 +234,52 @@ def require_ids_version(minversion, reason):
                     % (minversion, reason))
 
 
-def wipe_data(client, query):
-    """Delete all datafiles from IDS that match the query.
-    The query must be a Query object and may return either Datafiles,
-    Datasets, or entire Investigations.
+def wipe_data(client, dsquery):
+    """Delete all datafiles from IDS relating to datasets matching the query.
+
+    The argument dsquery must be a Query object searching for
+    datasets.  All datafiles relating to corresponding datasets must
+    have been uploaded to ids.server
+    (Issue icatproject/ids.server #61).
     """
     require_ids_version("1.6.0", "Issue #42")
-
-    alldfquery = Query(client, "Datafile", limit=(0,1))
-    objdfquery = Query(client, "Datafile", limit=(0,1))
-    if query.entity.BeanName == 'Datafile':
-        alldfquery.addConditions(query.conditions)
-        objdfquery = None
-    elif query.entity.BeanName == 'Dataset':
-        conditions = {}
-        for a,c in query.conditions.items():
-            conditions["dataset.%s" % a] = c
-        alldfquery.addConditions(conditions)
-        objdfquery.addConditions({"dataset.id": "= %d"})
-    elif query.entity.BeanName == 'Investigation':
-        conditions = {}
-        for a,c in query.conditions.items():
-            conditions["dataset.investigation.%s" % a] = c
-        alldfquery.addConditions(conditions)
-        objdfquery.addConditions({"dataset.investigation.id": "= %d"})
-    else:
+    if dsquery.entity.BeanName != 'Dataset':
         raise ValueError("Invalid query '%s'" % query)
 
+    dfquery = Query(client, "Datafile", 
+                    conditions={"location": "IS NOT NULL"}, limit=(0,1))
+    for a,c in dsquery.conditions.items():
+        dfquery.addConditions({"dataset.%s" % a: c})
+
     while True:
-        for obj in client.searchChunked(query):
-            if objdfquery and not client.search(str(objdfquery) % obj.id):
-                continue
-            selection = DataSelection([obj])
+
+        for ds in client.searchChunked(dsquery):
+            selection = DataSelection([ds])
             if client.ids.getStatus(selection) == "ONLINE":
                 client.deleteData(selection)
-        for obj in client.searchChunked(query):
-            if objdfquery and not client.search(str(objdfquery) % obj.id):
-                continue
-            selection = DataSelection([obj])
+
+        # In order to limit the load in IDS, we only restore a maximum
+        # of 500 datasets at a time.
+        restore_count = 0
+        for ds in client.searchChunked(dsquery):
+            if restore_count >= 500:
+                break
+            selection = DataSelection([ds])
             if client.ids.getStatus(selection) == "ARCHIVED":
                 client.ids.restore(selection)
-        if client.search(alldfquery):
-            time.sleep(10)
+                restore_count += 1
+
+        if client.search(dfquery):
+            time.sleep(60)
         else:
             break
+
 
 def wipe_all(client):
     """Delete all content from ICAT.
     """
     require_icat_version("4.4.0", "Need extended root permission")
-    query = Query(client, "Datafile", conditions={"location": "IS NOT NULL"})
-    wipe_data(client, query)
+    wipe_data(client, Query(client, "Dataset"))
     tables = ["Investigation", "Facility"] + client.getEntityNames()
     for t in tables:
         query = Query(client, t, limit=(0, 200))
