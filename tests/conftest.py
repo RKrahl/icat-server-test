@@ -257,6 +257,7 @@ def wipe_data(client, dsquery):
             selection = DataSelection([ds])
             if client.ids.getStatus(selection) == "ONLINE":
                 client.deleteData(selection)
+                client.delete(ds)
 
         # In order to limit the load in IDS, we only restore a maximum
         # of 500 datasets at a time.
