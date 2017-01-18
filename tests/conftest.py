@@ -252,24 +252,28 @@ def wipe_data(client, dsquery):
         dfquery.addConditions({"dataset.%s" % a: c})
 
     while True:
-
+        deleteDatasets = []
+        restoreDatasets = []
         for ds in client.searchChunked(dsquery):
-            selection = DataSelection([ds])
-            if client.ids.getStatus(selection) == "ONLINE":
-                client.deleteData(selection)
-                client.delete(ds)
-
-        # In order to limit the load in IDS, we only restore a maximum
-        # of 500 datasets at a time.
-        restore_count = 0
-        for ds in client.searchChunked(dsquery):
-            if restore_count >= 500:
-                break
-            selection = DataSelection([ds])
-            if client.ids.getStatus(selection) == "ARCHIVED":
-                client.ids.restore(selection)
-                restore_count += 1
-
+            status = client.ids.getStatus(DataSelection([ds]))
+            if status == "ONLINE":
+                deleteDatasets.append(ds)
+                if len(deleteDatasets) >= 200:
+                    client.deleteData(deleteDatasets)
+                    client.deleteMany(deleteDatasets)
+                    deleteDatasets = []
+            elif status == "ARCHIVED":
+                if len(restoreDatasets) < 200:
+                    restoreDatasets.append(ds)
+        if len(deleteDatasets) > 0:
+            client.deleteData(deleteDatasets)
+            client.deleteMany(deleteDatasets)
+        if len(restoreDatasets) > 0:
+            client.ids.restore(DataSelection(restoreDatasets))
+        # This whole loop may take a significant amount of time, make
+        # sure our session does not time out.
+        client.refresh()
+        # If any Datafile is left we need to continue the loop.
         if client.search(dfquery):
             time.sleep(60)
         else:
