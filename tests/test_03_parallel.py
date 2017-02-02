@@ -3,20 +3,22 @@
 
 from __future__ import print_function
 import sys
+import os.path
 import threading
 if sys.version_info < (3, 0):
     import Queue as queue
 else:
     import queue
 import random
+import tempfile
 import logging
 from timeit import default_timer as timer
 import pytest
 import icat
 import icat.config
 from icat.query import Query
-from conftest import getConfig, wipe_data
-from conftest import StatItem, DatasetBase, Time, MemorySpace
+from conftest import getConfig, wipe_data, tmpdir
+from conftest import StatItem, DatafileBase, DatasetBase, Time, MemorySpace
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -28,19 +30,52 @@ testInvestigation = "12100409-ST"
 testDatasetName = "test_parallel"
 testDatasetCount = 200
 
+class PreparedRandomDatafile(DatafileBase):
+
+    rndfile = None
+
+    @classmethod
+    def prepareRandomFile(cls, size, tmpdir):
+        cls.rndfile = os.path.join(tmpdir.dir, "rndfile")
+        chunksize = 8192
+        with open("/dev/urandom", "rb") as infile:
+            with open(cls.rndfile, "wb") as outfile:
+                while size > 0:
+                    if chunksize > size:
+                        chunksize = size
+                    chunk = infile.read(chunksize)
+                    outfile.write(chunk)
+                    size -= len(chunk)
+
+    def __init__(self, size):
+        super(PreparedRandomDatafile, self).__init__(size)
+        assert self.rndfile
+        self.data = open(self.rndfile, 'rb')
+
+    def close(self):
+        self.data.close()
+
+    def _read(self, n):
+        return self.data.read(n)
+
 class Dataset(DatasetBase):
     fileCount = 4
     fileSize = MemorySpace("20 MiB")
 
-def createDatasets(client, tag):
+def createDatasets(client, tag, source, tmpdir):
     testDatasets = []
     query = Query(client, "Investigation", conditions={
         "name": "= '%s'" % testInvestigation,
     })
     inv = client.assertedSearch(query)[0]
+    if source == "file":
+        PreparedRandomDatafile.prepareRandomFile(Dataset.fileSize, tmpdir)
+        data = PreparedRandomDatafile
+    else:
+        data = source
     for i in range(1, testDatasetCount+1):
         name = "%s-%s-%05d" % (testDatasetName, tag, i)
-        testDatasets.append(Dataset(client, inv, name))
+        testDatasets.append(Dataset(client, inv, name, data=data))
     return testDatasets
 
 # ============================= helper =============================
@@ -67,9 +102,9 @@ def icatconfig(setupicat, testConfig, request):
 
 # ============================= tests ==============================
 
-@pytest.mark.parametrize("source", ["zero", "urandom"])
+@pytest.mark.parametrize("source", ["zero", "urandom", "file"])
 @pytest.mark.parametrize("numThreads", [1, 2, 3, 4, 6, 8, 10, 12, 16, 20])
-def test_upload(icatconfig, stat, source, numThreads):
+def test_upload(icatconfig, stat, tmpdir, source, numThreads):
 
     dsQueue = queue.Queue()
     resultQueue = queue.Queue()
@@ -97,11 +132,11 @@ def test_upload(icatconfig, stat, source, numThreads):
         t.start()
         threads.append(t)
     log.info("test_parallel: create datasets")
-    stag = {"zero":"z", "urandom":"r"}
+    stag = {"zero":"z", "urandom":"r", "file":"f"}
     tag = "%s%02d" % (stag[source], numThreads)
     client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
     client.login(icatconfig.auth, icatconfig.credentials)
-    testDatasets = createDatasets(client, tag)
+    testDatasets = createDatasets(client, tag, source, tmpdir)
     client.logout()
     size = len(testDatasets) * Dataset.getSize()
     log.info("test_parallel: start uploads")

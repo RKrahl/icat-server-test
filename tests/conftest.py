@@ -14,6 +14,7 @@ import zlib
 import tempfile
 import zipfile
 import subprocess
+import shutil
 from distutils.version import StrictVersion as Version
 import yaml
 import pytest
@@ -471,6 +472,25 @@ class DatasetBase(object):
 
 
 # ============================ fixtures ==============================
+
+
+class TmpDir(object):
+    """Provide a temporary directory.
+    """
+    def __init__(self):
+        self.dir = tempfile.mkdtemp(prefix="icat-test-")
+    def __del__(self):
+        self.cleanup()
+    def cleanup(self):
+        if self.dir:
+            shutil.rmtree(self.dir)
+        self.dir = None
+
+@pytest.fixture(scope="session")
+def tmpdir(request):
+    tdir = TmpDir()
+    request.addfinalizer(tdir.cleanup)
+    return tdir
 
 
 class TestConfig(object):
