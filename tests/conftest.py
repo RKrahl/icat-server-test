@@ -305,13 +305,35 @@ def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
 # =========================== test data ==============================
 
 
-class DummyDatafile(object):
-    """A dummy readable with random content.
+class DatafileBase(object):
+    """Abstract base for Datafile classes.
+    Derived classes must implemtent _read().
     """
-    def __init__(self, size, data):
+    def __init__(self, size):
         self.size = size
         self._delivered = 0
         self.crc32 = 0
+    def close(self):
+        pass
+    def _read(self, n):
+        raise NotImplementedError
+    def read(self, n):
+        remaining = self.size - self._delivered
+        if n < 0 or n > remaining:
+            n = remaining
+        chunk = self._read(n)
+        self.crc32 = zlib.crc32(chunk, self.crc32)
+        self._delivered += n
+        return chunk
+    def getcrc(self):
+        return "%x" % (self.crc32 & 0xffffffff)
+
+class DummyDatafile(DatafileBase):
+    """A dummy readable with random or zero content.
+    """
+    def __init__(self, size, data):
+        super(DummyDatafile, self).__init__(size)
+        assert data in ['random', 'urandom', 'zero']
         if data == 'urandom':
             self.data = open('/dev/urandom', 'rb')
         else:
@@ -321,24 +343,15 @@ class DummyDatafile(object):
             self.data.close()
         except AttributeError:
             pass
-    def read(self, n):
-        remaining = self.size - self._delivered
-        if n < 0 or n > remaining:
-            n = remaining
+    def _read(self, n):
         if hasattr(self.data, 'read'):
-            chunk = self.data.read(n)
+            return self.data.read(n)
         elif self.data == 'random':
-            chunk = buf(getrandbits(8) for _ in range(n))
+            return buf(getrandbits(8) for _ in range(n))
         elif self.data == 'zero':
-            chunk = buf(n)
+            return buf(n)
         else:
             raise ValueError("invalid data source '%s'" % self.data)
-        self.crc32 = zlib.crc32(chunk, self.crc32)
-        self._delivered += n
-        return chunk
-    def getcrc(self):
-        return "%x" % (self.crc32 & 0xffffffff)
-
 
 class DatasetBase(object):
     """A test dataset.
@@ -382,7 +395,6 @@ class DatasetBase(object):
             self.fileSize = fileSize
         else:
             assert self.fileSize is not None
-        assert data in ['random', 'urandom', 'zero']
         self.data = data
         self.size = self.fileCount*self.fileSize
 
@@ -398,7 +410,14 @@ class DatasetBase(object):
         start = timer()
         for n in range(1,self.fileCount+1):
             name = "test_%05d.dat" % n
-            f = DummyDatafile(self.fileSize, self.data)
+            if isinstance(self.data, str):
+                f = DummyDatafile(self.fileSize, self.data)
+            elif issubclass(self.data, DatafileBase):
+                f = self.data(self.fileSize)
+            else:
+                raise TypeError("data: invalid type %s. Must either be str "
+                                "or a subclass of DatafileBase." 
+                                % type(self.data))
             datafile = client.new("datafile",
                                   name=name,
                                   dataset=self.dataset,
