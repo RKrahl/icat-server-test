@@ -27,7 +27,7 @@ log = logging.getLogger("test.%s" % __name__)
 # ============================ testdata ============================
 
 testInvestigation = "12100409-ST"
-testDatasetName = "test_parallel"
+testDatasetName = "test_parallel-threads"
 testDatasetCount = 200
 
 class PreparedRandomDatafile(DatafileBase):
@@ -124,14 +124,14 @@ def test_upload(icatconfig, stat, tmpdir, source, numThreads):
             dsQueue.task_done()
         client.logout()
 
-    log.info("test_parallel: source = '%s', numThreads = %d", 
+    log.info("test_parallel-threads: source = '%s', numThreads = %d", 
              source, numThreads)
     threads = []
     for i in range(numThreads):
         t = threading.Thread(target=uploadWorker, args=(icatconfig,))
         t.start()
         threads.append(t)
-    log.info("test_parallel: create datasets")
+    log.info("test_parallel-threads: create datasets")
     stag = {"zero":"z", "urandom":"r", "file":"f"}
     tag = "%s%02d" % (stag[source], numThreads)
     client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
@@ -139,7 +139,7 @@ def test_upload(icatconfig, stat, tmpdir, source, numThreads):
     testDatasets = createDatasets(client, tag, source, tmpdir)
     client.logout()
     size = len(testDatasets) * Dataset.getSize()
-    log.info("test_parallel: start uploads")
+    log.info("test_parallel-threads: start uploads")
     start = timer()
     for dataset in testDatasets:
         dsQueue.put(dataset)
@@ -150,7 +150,7 @@ def test_upload(icatconfig, stat, tmpdir, source, numThreads):
         t.join()
     end = timer()
     elapsed = Time(end - start)
-    log.info("test_parallel: uploaded %s in %s (%s/s)", 
+    log.info("test_parallel-threads: uploaded %s in %s (%s/s)", 
              size, elapsed, MemorySpace(size/elapsed))
     c = 0
     while True:
@@ -164,6 +164,6 @@ def test_upload(icatconfig, stat, tmpdir, source, numThreads):
         except queue.Empty:
             break
     assert c == len(testDatasets)
-    statitem = StatItem("upload", "test_parallel-%s" % tag, 
+    statitem = StatItem("upload", "test_parallel-threads-%s" % tag, 
                         int(size), float(elapsed))
     stat.add(statitem)
