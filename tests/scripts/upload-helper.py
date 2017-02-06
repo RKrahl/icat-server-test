@@ -12,7 +12,7 @@ import yaml
 import icat
 import icat.config
 from icat.query import Query
-from conftest import DatafileBase, DatasetBase, MemorySpace
+from conftest import Unbuffered, DatafileBase, DatasetBase, MemorySpace
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,6 +33,11 @@ conf = config.getconfig()
 
 client = icat.Client(conf.url, **conf.client_kwargs)
 client.login(conf.auth, conf.credentials)
+
+
+# Disable buffering of stdout.
+sys.stdout = Unbuffered(sys.stdout)
+
 
 class PreparedRandomDatafile(DatafileBase):
 
@@ -62,9 +67,11 @@ class PreparedRandomDatafile(DatafileBase):
     def _read(self, n):
         return self.data.read(n)
 
+
 class Dataset(DatasetBase):
     fileCount = conf.fileCount
     fileSize = conf.fileSize
+
 
 def getInvestigation():
     query = Query(client, "Investigation", conditions={
@@ -79,8 +86,8 @@ if conf.source == "file":
 else:
     data = conf.source
 
-sys.stdout.write("READY\n")
-sys.stdout.flush()
+
+print("READY")
 
 while True:
     name = sys.stdin.readline().strip()
@@ -89,7 +96,8 @@ while True:
     dataset = Dataset(client, investigation, name, data=data)
     try:
         statitem = dataset.uploadFiles(client)
-        sys.stdout.write("OK: %s\n" % yaml.dump(statitem.as_dict()).strip())
+        print("OK: %s" % yaml.dump(statitem.as_dict()).strip())
     except Exception as err:
-        sys.stdout.write("ERROR: %s\n" % err)
-    sys.stdout.flush()
+        print("ERROR: %s" % err)
+
+print("DONE")
