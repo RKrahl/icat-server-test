@@ -308,9 +308,12 @@ def wipe_all(client):
             client.deleteMany(objs)
 
 
-def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
+def script_cmdline(scriptname, args):
     script = os.path.join(testdir, "scripts", scriptname)
-    cmd = [sys.executable, script] + args
+    return [sys.executable, script] + args
+
+def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
+    cmd = script_cmdline(scriptname, args)
     print("\n>", *cmd)
     subprocess.check_call(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
 
