@@ -4,15 +4,13 @@ from __future__ import print_function
 import sys
 import os
 import os.path
-sys.path[0] = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), ".."))
-sys.dont_write_bytecode = True
 import tempfile
 import logging
 import yaml
 import icat
 import icat.config
 from icat.query import Query
-from conftest import Unbuffered, DatafileBase, DatasetBase, MemorySpace
+from helper import Unbuffered, DatafileBase, DatasetBase, MemorySpace
 
 logging.basicConfig(level=logging.INFO)
 

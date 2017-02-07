@@ -2,6 +2,7 @@
 *~
 __pycache__/
 /MANIFEST
+/build/
 /dist/
 /test-*.log
 /test-*.yaml

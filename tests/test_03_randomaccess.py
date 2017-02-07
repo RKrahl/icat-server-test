@@ -9,7 +9,8 @@ import pytest
 import icat
 import icat.config
 from icat.query import Query
-from conftest import getConfig, wipe_data, DatasetBase, Time, MemorySpace
+from helper import Time, MemorySpace, DatasetBase
+from conftest import getConfig, wipe_data
 
 
 log = logging.getLogger("test.%s" % __name__)

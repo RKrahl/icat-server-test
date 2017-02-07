@@ -25,6 +25,7 @@ setup(
     author_email = "rolf.krahl@helmholtz-berlin.de",
     license = "Apache-2.0",
     requires = ["icat", "pytest", "distutils_pytest"],
+    py_modules = ["helper"],
     classifiers = [
         "Programming Language :: Python",
         "Programming Language :: Python :: 2",

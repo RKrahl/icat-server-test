@@ -15,7 +15,8 @@ import icat
 import icat.config
 from icat.ids import DataSelection
 from icat.query import Query
-from conftest import getConfig, wipe_data, DatasetBase, MemorySpace
+from helper import MemorySpace, DatasetBase
+from conftest import getConfig, wipe_data
 
 
 log = logging.getLogger("test.%s" % __name__)
