@@ -66,7 +66,7 @@ class PreparedRandomDatafile(DatafileBase):
 
     def __init__(self, size):
         super(PreparedRandomDatafile, self).__init__(size)
-        assert self.rndfile
+        assert self.rndfile, "no rndfile"
         self.data = os.fdopen(os.dup(self.rndfile.fileno()), 'rb')
         self.data.seek(0)
 

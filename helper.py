@@ -184,7 +184,7 @@ class DummyDatafile(DatafileBase):
     """
     def __init__(self, size, data):
         super(DummyDatafile, self).__init__(size)
-        assert data in ['random', 'urandom', 'zero']
+        assert data in ['random', 'urandom', 'zero'], "invalid data"
         if data == 'urandom':
             self.data = open('/dev/urandom', 'rb')
         else:
@@ -231,8 +231,8 @@ class DatasetBase(object):
 
     @classmethod
     def getSize(cls):
-        assert cls.fileCount is not None
-        assert cls.fileSize is not None
+        assert cls.fileCount is not None, "fileCount is not set"
+        assert cls.fileSize is not None, "fileSize is not set"
         return cls.fileCount*cls.fileSize
 
     def __init__(self, client, investigation, name, 
@@ -241,11 +241,11 @@ class DatasetBase(object):
         if fileCount:
             self.fileCount = fileCount
         else:
-            assert self.fileCount is not None
+            assert self.fileCount is not None, "fileCount is not set"
         if fileSize:
             self.fileSize = fileSize
         else:
-            assert self.fileSize is not None
+            assert self.fileSize is not None, "fileSize is not set"
         self.data = data
         self.size = self.fileCount*self.fileSize
 
@@ -275,9 +275,9 @@ class DatasetBase(object):
                                   datafileFormat=datafileFormat)
             df = client.putData(f, datafile)
             crc = f.getcrc()
-            assert df.location is not None
-            assert df.fileSize == self.fileSize
-            assert df.checksum == crc
+            assert df.location is not None, "location is not set"
+            assert df.fileSize == self.fileSize, "fileSize does not match"
+            assert df.checksum == crc, "checksum does not match"
             f.close()
         end = timer()
         elapsed = Time(end - start)
@@ -290,7 +290,7 @@ class DatasetBase(object):
             "dataset.id": "= %d" % self.dataset.id,
         })
         datafiles = client.search(query)
-        assert len(datafiles) == self.fileCount
+        assert len(datafiles) == self.fileCount, "wrong number of datafiles"
         with tempfile.TemporaryFile() as f:
             start = timer()
             while True:
@@ -305,16 +305,20 @@ class DatasetBase(object):
             end = timer()
             zf = zipfile.ZipFile(f, 'r')
             zinfos = zf.infolist()
-            assert len(zinfos) == len(datafiles)
+            assert len(zinfos) == len(datafiles), \
+                "wrong number of datafiles in download"
             for df in datafiles:
                 zi = None
                 for i in zinfos:
                     if i.filename.endswith(df.name):
                         zi = i
                         break
-                assert zi is not None
-                assert "%x" % (zi.CRC & 0xffffffff) == df.checksum
-                assert zi.file_size == df.fileSize
+                assert zi is not None, \
+                    "datafile not found in download"
+                assert "%x" % (zi.CRC & 0xffffffff) == df.checksum, \
+                    "checksum does not match in download"
+                assert zi.file_size == df.fileSize, \
+                    "fileSize does not match in download"
         elapsed = Time(end - start)
         log.info("Downloaded %s for dataset %s in %s (%s/s)", 
                  self.size, self.name, elapsed, MemorySpace(self.size/elapsed))
