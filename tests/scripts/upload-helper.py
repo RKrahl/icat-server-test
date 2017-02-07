@@ -63,6 +63,7 @@ class PreparedRandomDatafile(DatafileBase):
                 chunk = infile.read(chunksize)
                 cls.rndfile.write(chunk)
                 size -= len(chunk)
+        cls.rndfile.flush()
 
     def __init__(self, size):
         super(PreparedRandomDatafile, self).__init__(size)
