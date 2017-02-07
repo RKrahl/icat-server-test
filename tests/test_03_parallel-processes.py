@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 import sys
+import os.path
 import re
 import threading
 if sys.version_info < (3, 0):
@@ -18,7 +19,7 @@ import icat
 import icat.config
 from icat.query import Query
 from helper import Time, MemorySpace, StatItem
-from conftest import getConfig, wipe_data, script_cmdline
+from conftest import getConfig, wipe_data, script_cmdline, logfilename
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -74,8 +75,9 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
         else:
             raise RuntimeError("Invalid status '%s'" % status)
 
-    def uploadWorker(conf, source):
-        args = conf.cmdargs + ["--fileCount=%d" % testFileCount, 
+    def uploadWorker(conf, source, logfile):
+        args = conf.cmdargs + ["--logfile=%s" % logfile, 
+                               "--fileCount=%d" % testFileCount, 
                                "--fileSize=%s" % testFileSize, 
                                "--source=%s" % source, 
                                testInvestigation]
@@ -103,20 +105,21 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
                 resultQueue.put(err)
             dsQueue.task_done()
 
+    stag = {"zero":"z", "urandom":"r", "file":"f"}
+    tag = "%s%02d" % (stag[source], numProcs)
+    logfile = "%s-%s-%%(pid)d.log" % (os.path.splitext(logfilename)[0], tag)
     log.info("test_parallel-processes: source = '%s', numProcs = %d", 
              source, numProcs)
     threads = []
     for i in range(numProcs):
-        t = threading.Thread(target=uploadWorker, args=(icatconfig, source))
+        t = threading.Thread(target=uploadWorker, 
+                             args=(icatconfig, source, logfile))
         t.start()
         threads.append(t)
     # Wait for all worker to be ready.
     for i in range(numProcs):
         status = resultQueue.get()
         assert status == "READY"
-    log.info("test_parallel-processes: helper started and ready")
-    stag = {"zero":"z", "urandom":"r", "file":"f"}
-    tag = "%s%02d" % (stag[source], numProcs)
     log.info("test_parallel-processes: start uploads")
     start = timer()
     for i in range(1, testDatasetCount+1):

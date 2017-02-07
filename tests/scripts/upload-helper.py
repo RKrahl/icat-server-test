@@ -12,9 +12,10 @@ import icat.config
 from icat.query import Query
 from helper import Unbuffered, DatafileBase, DatasetBase, MemorySpace
 
-logging.basicConfig(level=logging.INFO)
-
 config = icat.config.Config(ids="mandatory")
+config.add_variable('logfile', ("--logfile",), 
+                    dict(help="logfile name template"),
+                    optional=True)
 config.add_variable('fileCount', ("--fileCount",), 
                     dict(help="number of data files in the dataset"),
                     type=int, default=4)
@@ -28,6 +29,16 @@ config.add_variable('source', ("--source",),
 config.add_variable('investigation', ("investigation",), 
                     dict(help="name of the investigation"))
 conf = config.getconfig()
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("upload-helper")
+if conf.logfile:
+    logfilename = conf.logfile % {'pid': os.getpid()}
+    logfile = logging.FileHandler(logfilename, mode='wt')
+    logformatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
+    logfile.setFormatter(logformatter)
+    log.addHandler(logfile)
+    log.propagate = False
 
 client = icat.Client(conf.url, **conf.client_kwargs)
 client.login(conf.auth, conf.credentials)
@@ -96,6 +107,7 @@ while True:
         statitem = dataset.uploadFiles(client)
         print("OK: %s" % yaml.dump(statitem.as_dict()).strip())
     except Exception as err:
+        log.error("%s: %s", type(err).__name__, err)
         print("ERROR: %s" % err)
 
 print("DONE")
