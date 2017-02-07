@@ -28,6 +28,8 @@ log = logging.getLogger("test.%s" % __name__)
 testInvestigation = "12100409-ST"
 testDatasetName = "test_parallel-processes"
 testDatasetCount = 200
+testFileCount = 4
+testFileSize = MemorySpace("20 MiB")
 
 # ============================= helper =============================
 
@@ -73,7 +75,10 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
             raise RuntimeError("Invalid status '%s'" % status)
 
     def uploadWorker(conf, source):
-        args = conf.cmdargs + ["--source", source, testInvestigation]
+        args = conf.cmdargs + ["--fileCount=%d" % testFileCount, 
+                               "--fileSize=%s" % testFileSize, 
+                               "--source=%s" % source, 
+                               testInvestigation]
         cmd = script_cmdline("upload-helper.py", args)
         helper = Popen(cmd, bufsize=0, stdin=PIPE, stdout=PIPE, 
                        universal_newlines=True)
