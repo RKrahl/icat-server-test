@@ -76,25 +76,27 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
             raise RuntimeError("Invalid status '%s'" % status)
 
     def uploadWorker(conf, source, logfile):
-        args = conf.cmdargs + ["--logfile=%s" % logfile, 
-                               "--fileCount=%d" % testFileCount, 
-                               "--fileSize=%s" % testFileSize, 
-                               "--source=%s" % source, 
-                               testInvestigation]
-        cmd = script_cmdline("upload-helper.py", args)
-        helper = Popen(cmd, bufsize=0, stdin=PIPE, stdout=PIPE, 
-                       universal_newlines=True)
-        stcode, stmsg = getStatus(helper)
-        resultQueue.put(stcode)
+        try:
+            args = conf.cmdargs + ["--logfile=%s" % logfile, 
+                                   "--fileCount=%d" % testFileCount, 
+                                   "--fileSize=%s" % testFileSize, 
+                                   "--source=%s" % source, 
+                                   testInvestigation]
+            cmd = script_cmdline("upload-helper.py", args)
+            helper = Popen(cmd, bufsize=0, stdin=PIPE, stdout=PIPE, 
+                           universal_newlines=True)
+            stcode, stmsg = getStatus(helper)
+            resultQueue.put(stcode)
+        except Exception as err:
+            resultQueue.put(err)
         while True:
             name = dsQueue.get()
             if name is None:
-                print("", file=helper.stdin)
                 break
             try:
                 print(name, file=helper.stdin)
                 stcode, stmsg = getStatus(helper)
-                assert stcode == 'OK'
+                assert stcode == 'OK', "unexpected status code"
                 stats = yaml.load(stmsg)
                 statitem = StatItem("upload", **stats)
                 resultQueue.put(statitem)
@@ -104,6 +106,14 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
             except Exception as err:
                 resultQueue.put(err)
             dsQueue.task_done()
+        try:
+            print("", file=helper.stdin)
+            stcode, stmsg = getStatus(helper)
+            retcode = helper.wait()
+            assert retcode == 0, "unexpected return code"
+            resultQueue.put(stcode)
+        except Exception as err:
+            resultQueue.put(err)
 
     stag = {"zero":"z", "urandom":"r", "file":"f"}
     tag = "%s%02d" % (stag[source], numProcs)
@@ -119,33 +129,41 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
     # Wait for all worker to be ready.
     for i in range(numProcs):
         status = resultQueue.get()
-        assert status == "READY"
+        if isinstance(status, str):
+            assert status == "READY"
+        else:
+            raise status
     log.info("test_parallel-processes: start uploads")
     start = timer()
     for i in range(1, testDatasetCount+1):
         name = "%s-%s-%05d" % (testDatasetName, tag, i)
         dsQueue.put(name)
     dsQueue.join()
+    end = timer()
+    elapsed = end - start
     for i in range(numProcs):
         dsQueue.put(None)
     for t in threads:
         t.join()
-    end = timer()
-    elapsed = end - start
     size = 0
     c = 0
+    tc = 0
     while True:
         try:
             r = resultQueue.get(block=False)
-            c += 1
             if isinstance(r, StatItem):
+                c += 1
                 stat.add(r)
                 size += r.size
+            elif isinstance(r, str):
+                assert r == "DONE"
+                tc += 1
             else:
                 raise r
         except queue.Empty:
             break
     assert c == testDatasetCount
+    assert tc == numProcs
     log.info("test_parallel-processes: uploaded %s in %s (%s/s)", 
              MemorySpace(size), Time(elapsed), MemorySpace(size/elapsed))
     statitem = StatItem("upload", "test_parallel-processes-%s" % tag, 
