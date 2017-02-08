@@ -12,6 +12,15 @@ import icat.config
 from icat.query import Query
 from helper import Unbuffered, DatafileBase, DatasetBase, MemorySpace
 
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("upload-helper")
+
+# Report all uncaught exceptions to the log.
+def exchandler(type, value, traceback):
+    log.critical("%s: %s" % (type.__name__, value))
+
+sys.excepthook = exchandler
+
 config = icat.config.Config(ids="mandatory")
 config.add_variable('logfile', ("--logfile",), 
                     dict(help="logfile name template"),
@@ -30,8 +39,6 @@ config.add_variable('investigation', ("investigation",),
                     dict(help="name of the investigation"))
 conf = config.getconfig()
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("upload-helper")
 if conf.logfile:
     logfilename = conf.logfile % {'pid': os.getpid()}
     logfile = logging.FileHandler(logfilename, mode='wt')
