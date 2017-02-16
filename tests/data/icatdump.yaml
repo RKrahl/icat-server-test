@@ -1,5 +1,5 @@
 %YAML 1.1
-# Date: Thu, 12 Jan 2017 10:27:53 +0000
+# Date: Thu, 16 Feb 2017 14:49:50 +0000
 # Service: https://icat.example.com:8181/ICATService/ICAT?wsdl
 # ICAT-API: 4.8
 # Generator: icatdump (python-icat 0.12.0)
@@ -604,25 +604,30 @@ application:
     name: gnomoanalytics
     version: '69'
 datafileFormat:
-  DatafileFormat_facility-(name-ESNF)_name-NeXus_version-4=2E0=2E0:
+  DatafileFormat_facility-(name-ESNF)_name-NeXus_version-N=2FA:
     description: A common data format for neutron, x-ray and muon science
     facility: Facility_name-ESNF
     name: NeXus
-    version: 4.0.0
-  DatafileFormat_facility-(name-ESNF)_name-NeXus_version-4=2E2=2E1:
-    description: A common data format for neutron, x-ray and muon science
+    version: N/A
+  DatafileFormat_facility-(name-ESNF)_name-Other_version-N=2FA:
+    description: Unknown file format
     facility: Facility_name-ESNF
-    name: NeXus
-    version: 4.2.1
-  DatafileFormat_facility-(name-ESNF)_name-NeXus_version-4=2E3=2E1:
-    description: A common data format for neutron, x-ray and muon science
+    name: Other
+    version: N/A
+  DatafileFormat_facility-(name-ESNF)_name-Text_version-N=2FA:
+    description: Plain text file
     facility: Facility_name-ESNF
-    name: NeXus
-    version: 4.3.1
-  DatafileFormat_facility-(name-ESNF)_name-raw_version-N=2FA:
-    description: Raw data
+    name: Text
+    version: N/A
+  DatafileFormat_facility-(name-ESNF)_name-XML_version-N=2FA:
+    description: XML document text
     facility: Facility_name-ESNF
-    name: raw
+    name: XML
+    version: N/A
+  DatafileFormat_facility-(name-ESNF)_name-Zip=20archive_version-N=2FA:
+    description: Zip archive file
+    facility: Facility_name-ESNF
+    name: Zip archive
     version: N/A
 datasetType:
   DatasetType_facility-(name-ESNF)_name-analyzed:

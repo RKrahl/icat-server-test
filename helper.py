@@ -218,7 +218,7 @@ class DatasetBase(object):
     @classmethod
     def getDatafileFormat(cls, client):
         if not cls._datafileFormat:
-            query = "SELECT o FROM DatafileFormat o WHERE o.name = 'raw'"
+            query = "SELECT o FROM DatafileFormat o WHERE o.name = 'Other'"
             cls._datafileFormat = client.assertedSearch(query)[0]
         return cls._datafileFormat
 
