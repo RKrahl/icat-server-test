@@ -234,6 +234,8 @@ def setupicat(standardConfig, request):
 
 def pytest_addoption(parser):
     parser.addini('icatingest', 'path to the icatingest command')
+    parser.addini('incomingbase', 'base directory of the incoming storage')
+    parser.addini('mainstoragebase', 'base directory of the main storage')
+    parser.addini('archivestoragebase', 'base directory of the archive storage')
     parser.addini('basesize', 'base size of the tests')
     parser.addini('cleanup', 'delete uploaded data after each test')
-
