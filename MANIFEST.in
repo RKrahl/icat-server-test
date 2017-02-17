@@ -5,5 +5,5 @@ include tests/conftest.py
 include tests/data/fileformats.xml
 include tests/data/icatdump.yaml
 include tests/pytest.ini
-include tests/scripts/upload-helper.py
+include tests/scripts/*.py
 include tests/test_*.py

@@ -55,6 +55,8 @@ archiveStorage = ArchiveFileStorage(conf.archiveStorageBase)
 
 dff = FormatChecker(client, conf.datafileFormats)
 
+os.umask(0o007)
+
 
 # ------------------------------------------------------------
 # class zipcreate.
