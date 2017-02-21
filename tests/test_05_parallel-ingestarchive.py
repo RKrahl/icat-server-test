@@ -150,12 +150,29 @@ def createDatasets(incomingdir, tag):
     for i in range(1, testDatasetCount+1):
         name = "%s-%05d" % (tag, i)
         testDatasets.append(Dataset(incomingdir, testProposalNo, name))
+        log.info("Created dataset %s in incoming.", name)
     return testDatasets
+
+def checkResults(numDatasets, resultQueue, stat):
+    c = 0
+    while True:
+        try:
+            r = resultQueue.get(block=False)
+            c += 1
+            if isinstance(r, StatItem):
+                stat.add(r)
+            else:
+                raise r
+        except queue.Empty:
+            break
+    assert c == numDatasets
 
 # ============================= tests ==============================
 
 @pytest.mark.parametrize("numThreads", [1, 2, 3, 4, 6, 8, 10, 12, 16, 20])
 def test_ingest(icatconfig, stat, numThreads):
+
+    # ingest: that is what we actually want to test here.
 
     dsQueue = queue.Queue()
     resultQueue = queue.Queue()
@@ -171,36 +188,6 @@ def test_ingest(icatconfig, stat, numThreads):
             except Exception as err:
                 resultQueue.put(err)
             dsQueue.task_done()
-
-    def downloadWorker(conf):
-        client = icat.Client(conf.url, **conf.client_kwargs)
-        client.login(conf.auth, conf.credentials)
-        while True:
-            dataset = dsQueue.get()
-            if dataset is None:
-                break
-            try:
-                dataset.verify(client)
-                statitem = dataset.download(client)
-                resultQueue.put(statitem)
-            except Exception as err:
-                resultQueue.put(err)
-            dsQueue.task_done()
-        client.logout()
-
-    def checkResults(numDatasets):
-        c = 0
-        while True:
-            try:
-                r = resultQueue.get(block=False)
-                c += 1
-                if isinstance(r, StatItem):
-                    stat.add(r)
-                else:
-                    raise r
-            except queue.Empty:
-                break
-        assert c == numDatasets
 
     log.info("test_parallel-ingest: numThreads = %d", numThreads)
     tag = "%s-%02d" % (testDatasetPrefix, numThreads)
@@ -225,9 +212,36 @@ def test_ingest(icatconfig, stat, numThreads):
     elapsed = Time(end - start)
     log.info("test_parallel-ingest: ingested %s in %s (%s/s)", 
              size, elapsed, MemorySpace(size/elapsed))
-    checkResults(len(testDatasets))
+    checkResults(len(testDatasets), resultQueue, stat)
     statitem = StatItem("ingest", tag, int(size), float(elapsed))
     stat.add(statitem)
+
+    # verify and download: in order to verify that the ingest has been
+    # done correctly, we verify the data in ICAT and download the
+    # files back.  All datasets will need to be restored before
+    # download, so this will take a significant amount of time.  So we
+    # also do the download in parallel threads, just to speed things
+    # up, even though we don't care too much to measure the parallel
+    # performance here.
+
+    dsQueue = queue.Queue()
+    resultQueue = queue.Queue()
+
+    def downloadWorker(conf):
+        client = icat.Client(conf.url, **conf.client_kwargs)
+        client.login(conf.auth, conf.credentials)
+        while True:
+            dataset = dsQueue.get()
+            if dataset is None:
+                break
+            try:
+                dataset.verify(client)
+                statitem = dataset.download(client)
+                resultQueue.put(statitem)
+            except Exception as err:
+                resultQueue.put(err)
+            dsQueue.task_done()
+        client.logout()
 
     threads = []
     for i in range(numThreads):
@@ -247,6 +261,6 @@ def test_ingest(icatconfig, stat, numThreads):
     elapsed = Time(end - start)
     log.info("test_parallel-ingest: download %s in %s (%s/s)", 
              size, elapsed, MemorySpace(size/elapsed))
-    checkResults(len(testDatasets))
+    checkResults(len(testDatasets), resultQueue, stat)
     statitem = StatItem("download", tag, int(size), float(elapsed))
     stat.add(statitem)
