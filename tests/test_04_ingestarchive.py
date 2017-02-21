@@ -24,16 +24,23 @@ testDatasetPrefix = "test_ingestarchive"
 
 # ============================= helper =============================
 
+
 @pytest.fixture(scope="module")
-def incomingdir(request, testConfig):
-    base = request.config.getini('incomingbase')
-    proposaldir = os.path.join(base, testProposalNo.replace('/', '_'))
+def icatconfig(setupicat, testConfig, request):
+    conf = getConfig(ids="mandatory")
+    mainbase = request.config.getini('mainstoragebase')
+    archivebase = request.config.getini('archivestoragebase')
+    conf.cmdargs.append("--mainStorageBase=%s" % mainbase)
+    conf.cmdargs.append("--archiveStorageBase=%s" % archivebase)
+    incomingbase = request.config.getini('incomingbase')
+    proposaldir = os.path.join(incomingbase, testProposalNo.replace('/', '_'))
     os.mkdir(proposaldir)
+    conf.proposaldir = proposaldir
     def cleanup():
         os.rmdir(proposaldir)
     if testConfig.cleanup:
         request.addfinalizer(cleanup)
-    return proposaldir
+    return conf
 
 
 class Datafile(object):
@@ -94,10 +101,8 @@ class Dataset(DatasetBase):
     def uploadFiles(self, client):
         raise RuntimeError("This Dataset class does not support upload.")
 
-    def ingest(self, conf, mainbase, archivebase):
-        args = conf.cmdargs + ["--mainStorageBase=%s" % mainbase, 
-                               "--archiveStorageBase=%s" % archivebase, 
-                               str(self.proposal), self.name]
+    def ingest(self, conf):
+        args = conf.cmdargs + [str(self.proposal), self.name]
         args.extend(f.path for f in self.files)
         log.info("%s: call ingest script", self.name)
         callscript("addfile-archive.py", args)
@@ -124,14 +129,12 @@ class Dataset(DatasetBase):
 
 # ============================= tests ==============================
 
-def test_ingest(setupicat, incomingdir, request, testConfig):
-    conf = getConfig(ids="mandatory")
-    client = icat.Client(conf.url, **conf.client_kwargs)
-    client.login(conf.auth, conf.credentials)
-    dataset = Dataset(incomingdir, testProposalNo, testDatasetPrefix + "_01")
-    mainbase = request.config.getini('mainstoragebase')
-    archivebase = request.config.getini('archivestoragebase')
-    dataset.ingest(conf, mainbase, archivebase)
+def test_ingest(icatconfig, testConfig):
+    name = testDatasetPrefix + "_01"
+    dataset = Dataset(icatconfig.proposaldir, testProposalNo, name)
+    dataset.ingest(icatconfig)
+    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
+    client.login(icatconfig.auth, icatconfig.credentials)
     dataset.verify(client)
     dataset.download(client)
     if testConfig.cleanup:
