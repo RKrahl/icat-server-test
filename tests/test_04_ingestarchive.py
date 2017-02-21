@@ -42,6 +42,23 @@ def icatconfig(setupicat, testConfig, request):
         request.addfinalizer(cleanup)
     return conf
 
+@pytest.fixture(scope="module")
+def client(icatconfig):
+    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
+    client.login(icatconfig.auth, icatconfig.credentials)
+    return client
+
+@pytest.fixture(scope="function")
+def dataset(request, icatconfig, client, testConfig):
+    assert request.node.name.startswith("test_")
+    name = testDatasetPrefix + request.node.name[4:]
+    dataset = Dataset(icatconfig.proposaldir, testProposalNo, name)
+    def cleanup():
+        dataset.cleanup(client)
+    if testConfig.cleanup:
+        request.addfinalizer(cleanup)
+    return dataset
+
 
 class Datafile(object):
 
@@ -129,13 +146,7 @@ class Dataset(DatasetBase):
 
 # ============================= tests ==============================
 
-def test_ingest(icatconfig, testConfig):
-    name = testDatasetPrefix + "_01"
-    dataset = Dataset(icatconfig.proposaldir, testProposalNo, name)
+def test_ingest(icatconfig, client, dataset):
     dataset.ingest(icatconfig)
-    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
-    client.login(icatconfig.auth, icatconfig.credentials)
     dataset.verify(client)
     dataset.download(client)
-    if testConfig.cleanup:
-        dataset.cleanup(client)
