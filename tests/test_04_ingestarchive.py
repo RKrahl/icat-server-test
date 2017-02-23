@@ -92,8 +92,8 @@ class Datafile(object):
 
 class Dataset(DatasetBase):
 
-    fileCount = 4
-    fileSize = MemorySpace("20 MiB")
+    fileCount = 32
+    fileSize = MemorySpace("10 MiB")
 
     def __init__(self, incomingdir, proposal, name):
         self.proposal = ProposalNo(proposal)
