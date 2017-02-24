@@ -5,6 +5,7 @@ from __future__ import print_function
 import sys
 import os
 import os.path
+import re
 import time
 from threading import Thread
 if sys.version_info < (3, 0):
@@ -60,6 +61,7 @@ def client(icatconfig):
 def dataset(request, icatconfig, client, testConfig):
     assert request.node.name.startswith("test_")
     name = testDatasetPrefix + request.node.name[4:]
+    name = re.sub(r'[\[\]]', '_', name)
     dataset = Dataset(icatconfig.proposaldir, testProposalNo, name)
     def cleanup():
         dataset.cleanup(client)
@@ -120,8 +122,9 @@ class Dataset(DatasetBase):
         for f in self.files:
             f.unlink()
         os.rmdir(self.datasetdir)
-        client.deleteData([self.dataset])
-        client.delete(self.dataset)
+        if self.dataset:
+            client.deleteData([self.dataset])
+            client.delete(self.dataset)
 
     def uploadFiles(self, client):
         raise RuntimeError("This Dataset class does not support upload.")
@@ -238,3 +241,31 @@ def test_ingest_and_upload(icatconfig, client, dataset):
     assert c == 2
     dataset.verify(client)
     dataset.download(client)
+
+@pytest.mark.parametrize("delay", [False, True])
+def test_ingest_existing(icatconfig, client, dataset, delay):
+    """Try to ingest a dataset that already exist.  This must yield an
+    error and must not in any way damage the already existing dataset.
+    """
+    query = icat.query.Query(client, "Investigation")
+    query.addConditions({"name":"='%s'" % dataset.proposal.name})
+    if dataset.proposal.visitId:
+        query.addConditions({"visitId": "='%s'" % dataset.proposal.visitId})
+    investigation = client.assertedSearch(query)[0]
+    old_dataset = DatasetBase(client, investigation, dataset.name, 
+                              fileCount=4, fileSize=MemorySpace("10 KiB"))
+    old_dataset.uploadFiles(client)
+    if delay:
+        # Request archive of the old dataset and wait until it is
+        # written to archive storage and removed from main storage.
+        client.ids.archive(DataSelection([old_dataset.dataset]))
+        time.sleep(90)
+    # OSError is raised if the ZIP file in archive storage exists,
+    # RuntimeError is raised if the directory in main storage exists,
+    # icat.ICATObjectExistsError is raised if neither files exist, but
+    # the dataset in ICAT.
+    with pytest.raises( (OSError, RuntimeError, icat.ICATObjectExistsError) ):
+        dataset.ingest(icatconfig)
+    old_dataset.download(client)
+    # Hack: make dataset.cleanup() delete old_dataset
+    dataset.dataset = old_dataset.dataset
