@@ -6,6 +6,7 @@ import sys
 import time
 import os.path
 import datetime
+import re
 import logging
 import tempfile
 import subprocess
@@ -16,6 +17,7 @@ import icat
 import icat.config
 from icat.ids import DataSelection
 from icat.query import Query
+from icat.exception import stripCause
 from helper import MemorySpace, StatFile
 
 
@@ -169,10 +171,41 @@ def script_cmdline(scriptname, args):
     script = os.path.join(testdir, "scripts", scriptname)
     return [sys.executable, script] + args
 
-def callscript(scriptname, args, stdin=None, stdout=None, stderr=None):
+def callscript(scriptname, args, stdin=None, stdout=None):
+
+    def parse_err(err):
+        found_tb = False
+        err.seek(0)
+        while True:
+            l = err.readline()
+            print(l, end='', file=sys.stderr)
+            if not l:
+                raise ValueError("Error line not found")
+            elif l.startswith(" "):
+                continue
+            elif l.startswith("Traceback"):
+                found_tb = True
+                continue
+            elif found_tb:
+                m = re.match(r'([A-Za-z0-9._]+):\s*(.*)', l)
+                if m:
+                    cls, msg = m.groups()
+                    return (eval(cls), msg)
+                else:
+                    raise ValueError("Invalid error line '%s'" % l)
+
     cmd = script_cmdline(scriptname, args)
     print("\n>", *cmd)
-    subprocess.check_call(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
+    with tempfile.TemporaryFile(mode='w+t') as stderr:
+        try:
+            subprocess.check_call(cmd, 
+                                  stdin=stdin, stdout=stdout, stderr=stderr)
+        except subprocess.CalledProcessError as procerr:
+            try:
+                errcls, msg = parse_err(stderr)
+            except:
+                raise stripCause(procerr)
+            raise stripCause(errcls(msg))
 
 
 # ============================ fixtures ==============================
