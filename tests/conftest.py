@@ -205,7 +205,11 @@ def callscript(scriptname, args, stdin=None, stdout=None):
                 errcls, msg = parse_err(stderr)
             except:
                 raise stripCause(procerr)
-            raise stripCause(errcls(msg))
+            if issubclass(errcls, icat.ServerError):
+                error = { 'message': msg, 'code': "0" }
+                raise stripCause(errcls(error, None))
+            else:
+                raise stripCause(errcls(msg))
 
 
 # ============================ fixtures ==============================
