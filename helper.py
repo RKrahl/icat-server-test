@@ -174,7 +174,7 @@ class DatafileBase(object):
             n = remaining
         chunk = self._read(n)
         self.crc32 = zlib.crc32(chunk, self.crc32)
-        self._delivered += n
+        self._delivered += len(chunk)
         return chunk
     def getcrc(self):
         return "%x" % (self.crc32 & 0xffffffff)
