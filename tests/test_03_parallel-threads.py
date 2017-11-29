@@ -82,9 +82,8 @@ def createDatasets(client, tag, source, tmpdir):
 
 @pytest.fixture(scope="module")
 def icatconfig(setupicat, testConfig, request):
-    conf = getConfig(ids="mandatory")
+    client, conf, config = getConfig(ids="mandatory")
     def cleanup():
-        client = icat.Client(conf.url, **conf.client_kwargs)
         client.login(conf.auth, conf.credentials)
         query = Query(client, "Dataset", conditions={
             "name": "LIKE '%s-%%'" % testDatasetName
@@ -96,21 +95,25 @@ def icatconfig(setupicat, testConfig, request):
             if not objs:
                 break
             client.deleteMany(objs)
+        client.logout()
     if testConfig.cleanup:
         request.addfinalizer(cleanup)
-    return conf
+    return (client, conf, config)
 
 # ============================= tests ==============================
 
 @pytest.mark.parametrize("source", ["zero", "urandom", "file"])
 @pytest.mark.parametrize("numThreads", [1, 2, 3, 4, 6, 8, 10, 12, 16, 20])
 def test_upload(icatconfig, stat, tmpdir, source, numThreads):
+    client, conf, config = icatconfig
 
     dsQueue = queue.Queue()
     resultQueue = queue.Queue()
 
-    def uploadWorker(conf):
-        client = icat.Client(conf.url, **conf.client_kwargs)
+    def uploadWorker(conf, client_kwargs):
+        # Note: I'm not sure whether Suds is thread safe.  Therefore
+        # use a separate local client object in each thread.
+        client = icat.Client(conf.url, **client_kwargs)
         client.login(conf.auth, conf.credentials)
         while True:
             dataset = dsQueue.get()
@@ -128,14 +131,14 @@ def test_upload(icatconfig, stat, tmpdir, source, numThreads):
              source, numThreads)
     threads = []
     for i in range(numThreads):
-        t = threading.Thread(target=uploadWorker, args=(icatconfig,))
+        t = threading.Thread(target=uploadWorker, 
+                             args=(conf, config.client_kwargs))
         t.start()
         threads.append(t)
     log.info("test_parallel-threads: create datasets")
     stag = {"zero":"z", "urandom":"r", "file":"f"}
     tag = "%s%02d" % (stag[source], numThreads)
-    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
-    client.login(icatconfig.auth, icatconfig.credentials)
+    client.login(conf.auth, conf.credentials)
     testDatasets = createDatasets(client, tag, source, tmpdir)
     client.logout()
     size = len(testDatasets) * Dataset.getSize()

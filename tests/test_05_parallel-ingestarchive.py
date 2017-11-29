@@ -36,7 +36,7 @@ testDatasetCount = 200
 
 @pytest.fixture(scope="module")
 def icatconfig(setupicat, testConfig, request):
-    conf = getConfig(ids="mandatory")
+    client, conf, config = getConfig(ids="mandatory")
     mainbase = request.config.getini('mainstoragebase')
     archivebase = request.config.getini('archivestoragebase')
     conf.cmdargs.append("--mainStorageBase=%s" % mainbase)
@@ -47,7 +47,6 @@ def icatconfig(setupicat, testConfig, request):
     conf.proposaldir = proposaldir
     def cleanup():
         shutil.rmtree(proposaldir)
-        client = icat.Client(conf.url, **conf.client_kwargs)
         client.login(conf.auth, conf.credentials)
         query = Query(client, "Dataset", conditions={
             "name": "LIKE '%s-%%'" % testDatasetPrefix
@@ -59,9 +58,10 @@ def icatconfig(setupicat, testConfig, request):
             if not objs:
                 break
             client.deleteMany(objs)
+        client.logout()
     if testConfig.cleanup:
         request.addfinalizer(cleanup)
-    return conf
+    return (conf, config)
 
 
 class Datafile(object):
@@ -171,6 +171,7 @@ def checkResults(numDatasets, resultQueue, stat):
 
 @pytest.mark.parametrize("numThreads", [1, 2, 3, 4, 6, 8, 10, 12, 16, 20])
 def test_ingest(icatconfig, stat, numThreads):
+    conf, config = icatconfig
 
     # ingest: that is what we actually want to test here.
 
@@ -191,12 +192,12 @@ def test_ingest(icatconfig, stat, numThreads):
 
     log.info("test_parallel-ingest: numThreads = %d", numThreads)
     tag = "%s-%02d" % (testDatasetPrefix, numThreads)
-    testDatasets = createDatasets(icatconfig.proposaldir, tag)
+    testDatasets = createDatasets(conf.proposaldir, tag)
     size = len(testDatasets) * Dataset.getSize()
 
     threads = []
     for i in range(numThreads):
-        t = threading.Thread(target=ingestWorker, args=(icatconfig,))
+        t = threading.Thread(target=ingestWorker, args=(conf,))
         t.start()
         threads.append(t)
     log.info("test_parallel-ingest: start ingest")
@@ -227,8 +228,8 @@ def test_ingest(icatconfig, stat, numThreads):
     dsQueue = queue.Queue()
     resultQueue = queue.Queue()
 
-    def downloadWorker(conf):
-        client = icat.Client(conf.url, **conf.client_kwargs)
+    def downloadWorker(conf, client_kwargs):
+        client = icat.Client(conf.url, **client_kwargs)
         client.login(conf.auth, conf.credentials)
         while True:
             dataset = dsQueue.get()
@@ -245,7 +246,8 @@ def test_ingest(icatconfig, stat, numThreads):
 
     threads = []
     for i in range(numThreads):
-        t = threading.Thread(target=downloadWorker, args=(icatconfig,))
+        t = threading.Thread(target=downloadWorker, 
+                             args=(conf, config.client_kwargs))
         t.start()
         threads.append(t)
     log.info("test_parallel-ingest: verify and download datasets")

@@ -45,9 +45,8 @@ config.add_variable('dataset', ("dataset",),
                     dict(help="name of the dataset"))
 config.add_variable('files', ("files",), 
                     dict(help="name of the files to add", nargs="+"))
-conf = config.getconfig()
+client, conf = config.getconfig()
 
-client = icat.Client(conf.url, **conf.client_kwargs)
 client.login(conf.auth, conf.credentials)
 
 mainStorage = MainFileStorage(conf.mainStorageBase)

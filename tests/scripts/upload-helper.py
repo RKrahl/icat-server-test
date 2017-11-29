@@ -37,7 +37,7 @@ config.add_variable('source', ("--source",),
                     default="zero")
 config.add_variable('investigation', ("investigation",), 
                     dict(help="name of the investigation"))
-conf = config.getconfig()
+client, conf = config.getconfig()
 
 if conf.logfile:
     logfilename = conf.logfile % {'pid': os.getpid()}
@@ -47,7 +47,6 @@ if conf.logfile:
     log.addHandler(logfile)
     log.propagate = False
 
-client = icat.Client(conf.url, **conf.client_kwargs)
 client.login(conf.auth, conf.credentials)
 
 

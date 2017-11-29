@@ -56,8 +56,7 @@ def createDatasets(client, testConfig):
 
 @pytest.fixture(scope="module")
 def client(setupicat, testConfig, request):
-    conf = getConfig(ids="mandatory")
-    client = icat.Client(conf.url, **conf.client_kwargs)
+    client, conf, _ = getConfig(ids="mandatory")
     client.login(conf.auth, conf.credentials)
     def cleanup():
         query = Query(client, "Dataset", conditions={
@@ -70,6 +69,7 @@ def client(setupicat, testConfig, request):
             if not objs:
                 break
             client.deleteMany(objs)
+            client.logout()
     if testConfig.cleanup:
         request.addfinalizer(cleanup)
     createDatasets(client, testConfig)

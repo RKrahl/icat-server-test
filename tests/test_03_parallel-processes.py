@@ -36,9 +36,8 @@ testFileSize = MemorySpace("20 MiB")
 
 @pytest.fixture(scope="module")
 def icatconfig(setupicat, testConfig, request):
-    conf = getConfig(ids="mandatory")
+    client, conf, _ = getConfig(ids="mandatory")
     def cleanup():
-        client = icat.Client(conf.url, **conf.client_kwargs)
         client.login(conf.auth, conf.credentials)
         query = Query(client, "Dataset", conditions={
             "name": "LIKE '%s-%%'" % testDatasetName
@@ -50,6 +49,7 @@ def icatconfig(setupicat, testConfig, request):
             if not objs:
                 break
             client.deleteMany(objs)
+        client.logout()
     if testConfig.cleanup:
         request.addfinalizer(cleanup)
     return conf

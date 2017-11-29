@@ -36,7 +36,8 @@ testDatasetPrefix = "test_ingestarchive"
 
 @pytest.fixture(scope="module")
 def icatconfig(setupicat, testConfig, request):
-    conf = getConfig(ids="mandatory")
+    client, conf, config = getConfig(ids="mandatory")
+    client.login(conf.auth, conf.credentials)
     mainbase = request.config.getini('mainstoragebase')
     archivebase = request.config.getini('archivestoragebase')
     conf.cmdargs.append("--mainStorageBase=%s" % mainbase)
@@ -47,22 +48,18 @@ def icatconfig(setupicat, testConfig, request):
     conf.proposaldir = proposaldir
     def cleanup():
         os.rmdir(proposaldir)
+        client.logout()
     if testConfig.cleanup:
         request.addfinalizer(cleanup)
-    return conf
-
-@pytest.fixture(scope="module")
-def client(icatconfig):
-    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
-    client.login(icatconfig.auth, icatconfig.credentials)
-    return client
+    return (client, conf, config)
 
 @pytest.fixture(scope="function")
-def dataset(request, icatconfig, client, testConfig):
+def dataset(request, icatconfig, testConfig):
+    client, conf, _ = icatconfig
     assert request.node.name.startswith("test_")
     name = testDatasetPrefix + request.node.name[4:]
     name = re.sub(r'[\[\]]', '_', name)
-    dataset = Dataset(icatconfig.proposaldir, testProposalNo, name)
+    dataset = Dataset(conf.proposaldir, testProposalNo, name)
     def cleanup():
         dataset.cleanup(client)
     if testConfig.cleanup:
@@ -160,21 +157,27 @@ class Dataset(DatasetBase):
 
 # ============================= tests ==============================
 
-def test_ingest(icatconfig, client, dataset):
+def test_ingest(icatconfig, dataset):
     """Ingest a dataset by directly writing to archive storage.
     """
-    dataset.ingest(icatconfig)
+    client, conf, _ = icatconfig
+    dataset.ingest(conf)
     dataset.verify(client)
     dataset.download(client)
 
-def test_ingest_and_upload(icatconfig, client, dataset):
+def test_ingest_and_upload(icatconfig, dataset):
     """Try to upload a file to the same dataset while we are ingesting it.
     """
+    client, conf, config = icatconfig
 
     resultQueue = queue.Queue()
 
-    def upload(client, dataset):
+    def upload(conf, client_kwargs, dataset):
         try:
+            # Note: I'm not sure whether Suds is thread safe.  Therefore
+            # use a separate local client object in each thread.
+            client = icat.Client(conf.url, **client_kwargs)
+            client.login(conf.auth, conf.credentials)
             name = dataset.name
             datafileFormat = dataset.getDatafileFormat(client)
             f = Datafile(dataset.datasetdir, "upload.dat", 32)
@@ -207,18 +210,19 @@ def test_ingest_and_upload(icatconfig, client, dataset):
                     time.sleep(0.2)
                     continue
             resultQueue.put(f)
+            client.logout()
         except Exception as err:
             resultQueue.put(err)
 
-    def ingest(icatconfig, client, dataset):
+    def ingest(conf, dataset):
         try:
-            dataset.ingest(icatconfig)
+            dataset.ingest(conf)
             resultQueue.put("Ok")
         except Exception as err:
             resultQueue.put(err)
 
-    tul = Thread(target=upload, args=(client, dataset))
-    tin = Thread(target=ingest, args=(icatconfig, client, dataset))
+    tul = Thread(target=upload, args=(conf, config.client_kwargs, dataset))
+    tin = Thread(target=ingest, args=(conf, dataset))
     threads = [tul, tin]
     for t in threads:
         t.start()
@@ -243,10 +247,11 @@ def test_ingest_and_upload(icatconfig, client, dataset):
     dataset.download(client)
 
 @pytest.mark.parametrize("delay", [False, True])
-def test_ingest_existing(icatconfig, client, dataset, delay):
+def test_ingest_existing(icatconfig, dataset, delay):
     """Try to ingest a dataset that already exist.  This must yield an
     error and must not in any way damage the already existing dataset.
     """
+    client, conf, _ = icatconfig
     query = icat.query.Query(client, "Investigation")
     query.addConditions({"name":"='%s'" % dataset.proposal.name})
     if dataset.proposal.visitId:
@@ -265,7 +270,7 @@ def test_ingest_existing(icatconfig, client, dataset, delay):
     # icat.ICATObjectExistsError is raised if neither files exist, but
     # the dataset in ICAT.
     with pytest.raises( (OSError, RuntimeError, icat.ICATObjectExistsError) ):
-        dataset.ingest(icatconfig)
+        dataset.ingest(conf)
     old_dataset.download(client)
     # Hack: make dataset.cleanup() delete old_dataset
     dataset.dataset = old_dataset.dataset

@@ -44,17 +44,17 @@ def createDatasets(client):
 
 @pytest.fixture(scope="module")
 def icatconfig(setupicat, testConfig, request):
-    conf = getConfig(ids="mandatory")
+    client, conf, config = getConfig(ids="mandatory")
     def cleanup():
-        client = icat.Client(conf.url, **conf.client_kwargs)
         client.login(conf.auth, conf.credentials)
         query = Query(client, "Dataset", conditions={
             "name": "LIKE '%s%%'" % testDatasetName
         })
         wipe_data(client, query)
+        client.logout()
     if testConfig.cleanup:
         request.addfinalizer(cleanup)
-    return conf
+    return (conf, config)
 
 def getStatus(client, ds):
     status = client.ids.getStatus(DataSelection([ds.dataset]))
@@ -71,8 +71,9 @@ def wait():
 # ============================= tests ==============================
 
 def test_upload(icatconfig):
-    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
-    client.login(icatconfig.auth, icatconfig.credentials)
+    conf, config = icatconfig
+    client = icat.Client(conf.url, **config.client_kwargs)
+    client.login(conf.auth, conf.credentials)
     createDatasets(client)
     assert len(testDatasets) > 0
     for dataset in testDatasets:
@@ -80,8 +81,9 @@ def test_upload(icatconfig):
     client.logout()
 
 def test_archive_and_wait(icatconfig):
-    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
-    client.login(icatconfig.auth, icatconfig.credentials)
+    conf, config = icatconfig
+    client = icat.Client(conf.url, **config.client_kwargs)
+    client.login(conf.auth, conf.credentials)
     for dataset in testDatasets:
         client.ids.archive(DataSelection([dataset.dataset]))
     time.sleep(10)
@@ -91,9 +93,10 @@ def test_archive_and_wait(icatconfig):
     wait()
 
 def test_restore(icatconfig):
+    conf, config = icatconfig
     hour = 60*60
-    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
-    client.login(icatconfig.auth, icatconfig.credentials)
+    client = icat.Client(conf.url, **config.client_kwargs)
+    client.login(conf.auth, conf.credentials)
     for dataset in testDatasets:
         client.ids.restore(DataSelection([dataset.dataset]))
     while True:
@@ -109,8 +112,9 @@ def test_restore(icatconfig):
     client.logout()
 
 def test_download(icatconfig):
-    client = icat.Client(icatconfig.url, **icatconfig.client_kwargs)
-    client.login(icatconfig.auth, icatconfig.credentials)
+    conf, config = icatconfig
+    client = icat.Client(conf.url, **config.client_kwargs)
+    client.login(conf.auth, conf.credentials)
     for dataset in testDatasets:
         dataset.download(client)
     client.logout()
