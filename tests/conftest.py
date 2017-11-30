@@ -31,12 +31,17 @@ timestamp = datetime.datetime.now().strftime("%y%m%d-%H%M%S")
 
 
 logging.basicConfig(level=logging.INFO)
+# Silence some rather chatty modules.
+logging.getLogger('suds.client').setLevel(logging.CRITICAL)
+logging.getLogger('suds').setLevel(logging.ERROR)
+
 log = logging.getLogger("test")
 logfilename = os.path.join(maindir, "test-%s.log" % timestamp)
 logfile = logging.FileHandler(logfilename, mode='wt')
 logformatter = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
 logfile.setFormatter(logformatter)
 log.addHandler(logfile)
+log.setLevel(logging.DEBUG)
 log.propagate = False
 
 
