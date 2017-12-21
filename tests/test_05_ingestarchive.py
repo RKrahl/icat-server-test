@@ -116,12 +116,10 @@ class Dataset(DatasetBase):
         self.dataset = None
 
     def cleanup(self, client):
+        super(Dataset, self).cleanup(client)
         for f in self.files:
             f.unlink()
         os.rmdir(self.datasetdir)
-        if self.dataset:
-            client.deleteData([self.dataset])
-            client.delete(self.dataset)
 
     def uploadFiles(self, client):
         raise RuntimeError("This Dataset class does not support upload.")
@@ -272,5 +270,4 @@ def test_ingest_existing(icatconfig, dataset, delay):
     with pytest.raises( (OSError, RuntimeError, icat.ICATObjectExistsError) ):
         dataset.ingest(conf)
     old_dataset.download(client)
-    # Hack: make dataset.cleanup() delete old_dataset
-    dataset.dataset = old_dataset.dataset
+    old_dataset.cleanup()

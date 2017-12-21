@@ -256,6 +256,12 @@ class DatasetBase(object):
         dataset.truncateRelations()
         self.dataset = dataset
 
+    def cleanup(self, client):
+        if self.dataset:
+            query = Query(client, "Dataset", 
+                          conditions={"id": "= %d" % self.dataset.id})
+            wipe_data(client, query)
+
     def uploadFiles(self, client):
         datafileFormat = self.getDatafileFormat(client)
         start = timer()
