@@ -1,8 +1,8 @@
 %YAML 1.1
-# Date: Thu, 16 Feb 2017 14:49:50 +0000
+# Date: Fri, 26 Jul 2019 12:48:21 +0000
 # Service: https://icat.example.com:8181/ICATService/ICAT?wsdl
-# ICAT-API: 4.8
-# Generator: icatdump (python-icat 0.12.0)
+# ICAT-API: 4.10
+# Generator: icatdump (python-icat 0.15.1)
 ---
 grouping:
   Grouping_name-investigation=5F08100122=2DEF=5Fowner:
@@ -604,40 +604,44 @@ application:
     name: gnomoanalytics
     version: '69'
 datafileFormat:
+  DatafileFormat_facility-(name-ESNF)_name-CSV_version-N=2FA:
+    description: Comma separated values
+    facility: Facility_name-ESNF
+    name: CSV
+    type: text/csv
+    version: N/A
   DatafileFormat_facility-(name-ESNF)_name-NeXus_version-N=2FA:
     description: A common data format for neutron, x-ray and muon science
     facility: Facility_name-ESNF
     name: NeXus
-    version: N/A
-  DatafileFormat_facility-(name-ESNF)_name-Other_version-N=2FA:
-    description: Unknown file format
-    facility: Facility_name-ESNF
-    name: Other
+    type: application/x-hdf
     version: N/A
   DatafileFormat_facility-(name-ESNF)_name-Text_version-N=2FA:
     description: Plain text file
     facility: Facility_name-ESNF
     name: Text
+    type: text/plain
     version: N/A
   DatafileFormat_facility-(name-ESNF)_name-XML_version-N=2FA:
     description: XML document text
     facility: Facility_name-ESNF
     name: XML
+    type: application/xml
     version: N/A
-  DatafileFormat_facility-(name-ESNF)_name-Zip=20archive_version-N=2FA:
-    description: Zip archive file
+  DatafileFormat_facility-(name-ESNF)_name-other_version-N=2FA:
+    description: Unknown file format
     facility: Facility_name-ESNF
-    name: Zip archive
+    name: other
     version: N/A
 datasetType:
   DatasetType_facility-(name-ESNF)_name-analyzed:
     description: data arising from the analysis of other data
     facility: Facility_name-ESNF
     name: analyzed
-  DatasetType_facility-(name-ESNF)_name-generic:
-    description: generic data
+  DatasetType_facility-(name-ESNF)_name-other:
+    description: data not belonging to any other category
     facility: Facility_name-ESNF
-    name: generic
+    name: other
   DatasetType_facility-(name-ESNF)_name-raw:
     description: data collected from experiments on instruments
     facility: Facility_name-ESNF
@@ -944,7 +948,7 @@ sampleType:
     name: Nickel(II) oxide SC
 ---
 investigation:
-  Investigation_facility-(name-ESNF)_name-08100122=2DEF_visitId-1=2E1=2DP:
+  Investigation_facility-(name-ESNF)_name-gate1=3A08100122=2DEF=2D1=2E1=2DP_visitId-=2D:
     facility: Facility_name-ESNF
     investigationGroups:
     - grouping: Grouping_name-investigation=5F08100122=2DEF=5Fowner
@@ -964,7 +968,7 @@ investigation:
       user: User_name-db=2Frbeck
     keywords:
     - name: Durol
-    name: 08100122-EF
+    name: gate1:08100122-EF-1.1-P
     parameters:
     - stringValue: photon
       type: ParameterType_facility-(name-ESNF)_name-Probe_units-N=2FA
@@ -975,15 +979,15 @@ investigation:
     startDate: '2008-03-13T10:39:42+00:00'
     title: Durol single crystal
     type: InvestigationType_name-Experiment_facility-(name-ESNF)
-    visitId: 1.1-P
+    visitId: '-'
 sample:
-  Sample_investigation-(facility-(name-ESNF)_name-08100122=2DEF_visitId-1=2E1=2DP)_name-Durol=20SC:
-    investigation: Investigation_facility-(name-ESNF)_name-08100122=2DEF_visitId-1=2E1=2DP
+  Sample_investigation-(facility-(name-ESNF)_name-gate1=3A08100122=2DEF=2D1=2E1=2DP_visitId-=2D)_name-Durol=20SC:
+    investigation: Investigation_facility-(name-ESNF)_name-gate1=3A08100122=2DEF=2D1=2E1=2DP_visitId-=2D
     name: Durol SC
     type: SampleType_facility-(name-ESNF)_name-Durol=20SC_molecularFormula-C10H14
 ---
 investigation:
-  Investigation_facility-(name-ESNF)_name-10100601=2DST_visitId-1=2E1=2DN:
+  Investigation_facility-(name-ESNF)_name-gate1=3A10100601=2DST=2D1=2E1=2DN_visitId-=2D:
     endDate: '2010-10-12T15:00:00+00:00'
     facility: Facility_name-ESNF
     investigationGroups:
@@ -1003,7 +1007,7 @@ investigation:
     - name: Manganese
     - name: NiMnGa
     - name: Nickel
-    name: 10100601-ST
+    name: gate1:10100601-ST-1.1-N
     parameters:
     - stringValue: neutron
       type: ParameterType_facility-(name-ESNF)_name-Probe_units-N=2FA
@@ -1020,10 +1024,10 @@ investigation:
     startDate: '2010-09-30T10:27:24+00:00'
     title: Ni-Mn-Ga flat cone
     type: InvestigationType_name-Experiment_facility-(name-ESNF)
-    visitId: 1.1-N
+    visitId: '-'
 sample:
-  Sample_investigation-(facility-(name-ESNF)_name-10100601=2DST_visitId-1=2E1=2DN)_name-NiMnGa=20991027:
-    investigation: Investigation_facility-(name-ESNF)_name-10100601=2DST_visitId-1=2E1=2DN
+  Sample_investigation-(facility-(name-ESNF)_name-gate1=3A10100601=2DST=2D1=2E1=2DN_visitId-=2D)_name-NiMnGa=20991027:
+    investigation: Investigation_facility-(name-ESNF)_name-gate1=3A10100601=2DST=2D1=2E1=2DN_visitId-=2D
     name: NiMnGa 991027
     parameters:
     - stringValue: 2046c9a7-ab07-4594-84a2-101617073a79
@@ -1031,7 +1035,7 @@ sample:
     type: SampleType_facility-(name-ESNF)_name-NiMnGa_molecularFormula-NiMnGa
 ---
 investigation:
-  Investigation_facility-(name-ESNF)_name-12100409=2DST_visitId-1=2E1=2DP:
+  Investigation_facility-(name-ESNF)_name-gate1=3A12100409=2DST=2D1=2E1=2DP_visitId-=2D:
     endDate: '2012-08-06T01:10:08+00:00'
     facility: Facility_name-ESNF
     investigationGroups:
@@ -1051,7 +1055,7 @@ investigation:
     - name: Nickel
     - name: Nickel oxide
     - name: oxide
-    name: 12100409-ST
+    name: gate1:12100409-ST-1.1-P
     parameters:
     - stringValue: photon
       type: ParameterType_facility-(name-ESNF)_name-Probe_units-N=2FA
@@ -1062,10 +1066,10 @@ investigation:
     startDate: '2012-07-26T15:44:24+00:00'
     title: NiO SC OF1 JUH HHL
     type: InvestigationType_name-Experiment_facility-(name-ESNF)
-    visitId: 1.1-P
+    visitId: '-'
 sample:
-  Sample_investigation-(facility-(name-ESNF)_name-12100409=2DST_visitId-1=2E1=2DP)_name-Nickel=28II=29=20oxide=20SC:
-    investigation: Investigation_facility-(name-ESNF)_name-12100409=2DST_visitId-1=2E1=2DP
+  ? Sample_investigation-(facility-(name-ESNF)_name-gate1=3A12100409=2DST=2D1=2E1=2DP_visitId-=2D)_name-Nickel=28II=29=20oxide=20SC
+  : investigation: Investigation_facility-(name-ESNF)_name-gate1=3A12100409=2DST=2D1=2E1=2DP_visitId-=2D
     name: Nickel(II) oxide SC
     parameters:
     - stringValue: c1b0a101-03aa-4d02-a1a2-e2826ba7871b
@@ -1078,6 +1082,6 @@ study:
     startDate: '2012-07-09T06:00:00+00:00'
     status: COMPLETE
     studyInvestigations:
-    - investigation: Investigation_facility-(name-ESNF)_name-10100601=2DST_visitId-1=2E1=2DN
-    - investigation: Investigation_facility-(name-ESNF)_name-12100409=2DST_visitId-1=2E1=2DP
+    - investigation: Investigation_facility-(name-ESNF)_name-gate1=3A10100601=2DST=2D1=2E1=2DN_visitId-=2D
+    - investigation: Investigation_facility-(name-ESNF)_name-gate1=3A12100409=2DST=2D1=2E1=2DP_visitId-=2D
     user: User_name-db=2Fnbour

@@ -12,7 +12,7 @@ from conftest import getConfig, wipe_data
 
 # ============================ testdata ============================
 
-testInvestigation = "12100409-ST"
+testInvestigation = "gate1:12100409-ST-1.1-P"
 testDatasetName = "test_simpleupload"
 testDatasets = []
 

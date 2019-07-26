@@ -18,7 +18,7 @@ log = logging.getLogger("test.%s" % __name__)
 
 # ============================ testdata ============================
 
-testInvestigation = "12100409-ST"
+testInvestigation = "gate1:12100409-ST-1.1-P"
 testDatasetName = "test_randomaccess"
 testDatasets = []
 
