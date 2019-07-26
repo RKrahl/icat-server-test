@@ -100,7 +100,7 @@ class Dataset(DatasetBase):
     fileSize = MemorySpace("20 MiB")
 
     def __init__(self, incomingdir, proposal, name):
-        self.proposal = ProposalNo(proposal)
+        self.proposal = ProposalNo.parse(proposal)
         self.name = name
         self.files = []
         self.datasetdir = os.path.join(incomingdir, name)
@@ -130,10 +130,9 @@ class Dataset(DatasetBase):
         query = icat.query.Query(client, "Dataset",
                                  conditions={"name":"= '%s'" % self.name}, 
                                  includes=["datafiles"])
-        query.addConditions({"investigation.name":"='%s'" % self.proposal.name})
-        if self.proposal.visitId:
-            query.addConditions({"investigation.visitId":
-                                 "='%s'" % self.proposal.visitId})
+        cond = self.proposal.as_conditions()
+        query.addConditions({ "investigation.%s" % a: c
+                              for (a, c) in cond.items() })
         self.dataset = client.assertedSearch(query)[0]
         assert len(self.dataset.datafiles) == len(self.files), \
             "wrong number of datafiles"

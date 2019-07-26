@@ -106,12 +106,10 @@ def getcrc(fname):
 # ------------------------------------------------------------
 
 def getinvestigation(invid):
-    proposal = ProposalNo(invid)
+    proposal = ProposalNo.parse(invid)
     query = Query(client, "Investigation", 
-                  conditions={"name":"='%s'" % proposal.name},
+                  conditions=proposal.as_conditions(),
                   includes={"facility"})
-    if proposal.visitId:
-        query.addConditions({"visitId":"='%s'" % proposal.visitId})
     return (client.assertedSearch(query)[0])
 
 investigation = getinvestigation(conf.investigation)

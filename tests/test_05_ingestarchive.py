@@ -103,7 +103,7 @@ class Dataset(DatasetBase):
     fileSize = MemorySpace("10 MiB")
 
     def __init__(self, incomingdir, proposal, name):
-        self.proposal = ProposalNo(proposal)
+        self.proposal = ProposalNo.parse(proposal)
         self.name = name
         self.files = []
         self.datasetdir = os.path.join(incomingdir, name)
@@ -135,10 +135,9 @@ class Dataset(DatasetBase):
         query = icat.query.Query(client, "Dataset",
                                  conditions={"name":"= '%s'" % self.name}, 
                                  includes=["datafiles"])
-        query.addConditions({"investigation.name":"='%s'" % self.proposal.name})
-        if self.proposal.visitId:
-            query.addConditions({"investigation.visitId":
-                                 "='%s'" % self.proposal.visitId})
+        cond = self.proposal.as_conditions()
+        query.addConditions({ "investigation.%s" % a: c
+                              for (a, c) in cond.items() })
         return client.assertedSearch(query)[0]
 
     def verify(self, client):
@@ -250,10 +249,8 @@ def test_ingest_existing(icatconfig, dataset, delay):
     error and must not in any way damage the already existing dataset.
     """
     client, conf, _ = icatconfig
-    query = icat.query.Query(client, "Investigation")
-    query.addConditions({"name":"='%s'" % dataset.proposal.name})
-    if dataset.proposal.visitId:
-        query.addConditions({"visitId": "='%s'" % dataset.proposal.visitId})
+    query = icat.query.Query(client, "Investigation",
+                             conditions=dataset.proposal.as_conditions())
     investigation = client.assertedSearch(query)[0]
     old_dataset = DatasetBase(client, investigation, dataset.name, 
                               fileCount=4, fileSize=MemorySpace("10 KiB"))
