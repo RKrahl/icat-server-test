@@ -12,10 +12,28 @@ class install(distutils.command.install.install):
         """Runs the command."""
         log.info("there is nothing to install here.")
 
-gitcmd = ["git", "describe", "--always", "--dirty"]
-proc = subprocess.Popen(["git", "describe", "--always", "--dirty"], 
-                        stdout=subprocess.PIPE)
-version = proc.communicate()[0].strip().decode('ascii')
+def get_version():
+    gitcmd = ["git", "describe", "--always", "--dirty"]
+    try:
+        proc = subprocess.Popen(gitcmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL)
+        version = proc.stdout.read().decode('ascii').strip()
+        proc.wait()
+        if proc.returncode != 0:
+            raise RuntimeError("non-zero exit status")
+        with open(".version", "wt") as f:
+            f.write(version)
+        return version
+    except (OSError, RuntimeError):
+        try:
+            with open(".version", "rt") as f:
+                version = f.read()
+        except OSError:
+            log.warn("warning: cannot determine version number")
+            version = "UNKNOWN"
+
+version = get_version()
 
 setup(
     name = "icat-server-test",
