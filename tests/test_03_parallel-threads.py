@@ -18,7 +18,7 @@ import icat
 import icat.config
 from icat.query import Query
 from helper import Time, MemorySpace, StatItem, DatafileBase, DatasetBase
-from conftest import getConfig, wipe_data, tmpdir
+from conftest import getConfig, getDatasetCount, wipe_data, tmpdir
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -28,7 +28,10 @@ log = logging.getLogger("test.%s" % __name__)
 
 testInvestigation = "gate1:12100409-ST-1.1-P"
 testDatasetName = "test_parallel-threads"
-testDatasetCount = 200
+
+sourceParams = ["zero", "urandom", "file"]
+nThreadsParams = [1, 2, 3, 4, 6, 8, 10, 12, 16, 20]
+numTests = len(sourceParams)*len(nThreadsParams)
 
 class PreparedRandomDatafile(DatafileBase):
 
@@ -62,7 +65,8 @@ class Dataset(DatasetBase):
     fileCount = 4
     fileSize = MemorySpace("20 MiB")
 
-def createDatasets(client, tag, source, tmpdir):
+def createDatasets(client, testConfig, tag, source, tmpdir):
+    dsCount = getDatasetCount(testConfig.baseSize, Dataset.getSize(), numTests)
     testDatasets = []
     query = Query(client, "Investigation", conditions={
         "name": "= '%s'" % testInvestigation,
@@ -73,7 +77,7 @@ def createDatasets(client, tag, source, tmpdir):
         data = PreparedRandomDatafile
     else:
         data = source
-    for i in range(1, testDatasetCount+1):
+    for i in range(1, dsCount+1):
         name = "%s-%s-%05d" % (testDatasetName, tag, i)
         testDatasets.append(Dataset(client, inv, name, data=data))
     return testDatasets
@@ -102,9 +106,9 @@ def icatconfig(setupicat, testConfig, request):
 
 # ============================= tests ==============================
 
-@pytest.mark.parametrize("source", ["zero", "urandom", "file"])
-@pytest.mark.parametrize("numThreads", [1, 2, 3, 4, 6, 8, 10, 12, 16, 20])
-def test_upload(icatconfig, stat, tmpdir, source, numThreads):
+@pytest.mark.parametrize("source", sourceParams)
+@pytest.mark.parametrize("numThreads", nThreadsParams)
+def test_upload(testConfig, icatconfig, stat, tmpdir, source, numThreads):
     client, conf, config = icatconfig
 
     dsQueue = queue.Queue()
@@ -139,7 +143,7 @@ def test_upload(icatconfig, stat, tmpdir, source, numThreads):
     stag = {"zero":"z", "urandom":"r", "file":"f"}
     tag = "%s%02d" % (stag[source], numThreads)
     client.login(conf.auth, conf.credentials)
-    testDatasets = createDatasets(client, tag, source, tmpdir)
+    testDatasets = createDatasets(client, testConfig, tag, source, tmpdir)
     client.logout()
     size = len(testDatasets) * Dataset.getSize()
     log.info("test_parallel-threads: start uploads")

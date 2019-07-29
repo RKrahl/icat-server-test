@@ -21,7 +21,7 @@ import icat.config
 from icat.query import Query
 from icat.hzb.proposal import ProposalNo
 from helper import Time, MemorySpace, DatasetBase, StatItem
-from conftest import getConfig, wipe_data, callscript
+from conftest import getConfig, getDatasetCount, wipe_data, callscript
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -30,7 +30,9 @@ log = logging.getLogger("test.%s" % __name__)
 
 testProposalNo = "12100409-ST-1.1-P"
 testDatasetPrefix = "test_parallel-ingest"
-testDatasetCount = 200
+
+nThreadsParams = [1, 2, 3, 4, 6, 8, 10, 12, 16, 20]
+numTests = len(nThreadsParams)
 
 # ============================= helper =============================
 
@@ -144,9 +146,10 @@ class Dataset(DatasetBase):
             assert df.fileSize == f.size
             assert df.checksum == f.getcrc()
 
-def createDatasets(incomingdir, tag):
+def createDatasets(testConfig, incomingdir, tag):
+    dsCount = getDatasetCount(testConfig.baseSize, Dataset.getSize(), numTests)
     testDatasets = []
-    for i in range(1, testDatasetCount+1):
+    for i in range(1, dsCount+1):
         name = "%s-%05d" % (tag, i)
         testDatasets.append(Dataset(incomingdir, testProposalNo, name))
         log.info("Created dataset %s in incoming.", name)
@@ -168,8 +171,8 @@ def checkResults(numDatasets, resultQueue, stat):
 
 # ============================= tests ==============================
 
-@pytest.mark.parametrize("numThreads", [1, 2, 3, 4, 6, 8, 10, 12, 16, 20])
-def test_ingest(icatconfig, stat, numThreads):
+@pytest.mark.parametrize("numThreads", nThreadsParams)
+def test_ingest(testConfig, icatconfig, stat, numThreads):
     conf, config = icatconfig
 
     # ingest: that is what we actually want to test here.
@@ -191,7 +194,7 @@ def test_ingest(icatconfig, stat, numThreads):
 
     log.info("test_parallel-ingest: numThreads = %d", numThreads)
     tag = "%s-%02d" % (testDatasetPrefix, numThreads)
-    testDatasets = createDatasets(conf.proposaldir, tag)
+    testDatasets = createDatasets(testConfig, conf.proposaldir, tag)
     size = len(testDatasets) * Dataset.getSize()
 
     threads = []

@@ -72,6 +72,14 @@ def gettestdata(fname):
     return fname
 
 
+def getDatasetCount(baseSize, datasetSize, numTests):
+    """Try to adapt the number of test datasets to upload per test so that
+    the total size of all test does not exceed baseSize.  But keep
+    within some reasonable limits.
+    """
+    return min(max(int(baseSize / (numTests * datasetSize)), 5), 200)
+
+
 def getConfig(confSection="root", **confArgs):
     """Get the configuration, skip on ConfigError.
     """

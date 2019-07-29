@@ -19,7 +19,8 @@ import icat
 import icat.config
 from icat.query import Query
 from helper import Time, MemorySpace, StatItem
-from conftest import getConfig, wipe_data, script_cmdline, logfilename
+from conftest import (getConfig, getDatasetCount,
+                      wipe_data, script_cmdline, logfilename)
 
 
 log = logging.getLogger("test.%s" % __name__)
@@ -28,9 +29,12 @@ log = logging.getLogger("test.%s" % __name__)
 
 testInvestigation = "gate1:12100409-ST-1.1-P"
 testDatasetName = "test_parallel-processes"
-testDatasetCount = 200
 testFileCount = 4
 testFileSize = MemorySpace("20 MiB")
+
+sourceParams = ["zero", "urandom", "file"]
+nProcsParams = [1, 2, 3, 4, 6, 8, 10, 12, 16, 20]
+numTests = len(sourceParams)*len(nProcsParams)
 
 # ============================= helper =============================
 
@@ -56,9 +60,11 @@ def icatconfig(setupicat, testConfig, request):
 
 # ============================= tests ==============================
 
-@pytest.mark.parametrize("source", ["zero", "urandom", "file"])
-@pytest.mark.parametrize("numProcs", [1, 2, 3, 4, 6, 8, 10, 12, 16, 20])
-def test_upload(icatconfig, stat, tmpdir, source, numProcs):
+@pytest.mark.parametrize("source", sourceParams)
+@pytest.mark.parametrize("numProcs", nProcsParams)
+def test_upload(testConfig, icatconfig, stat, tmpdir, source, numProcs):
+    dsSize = testFileCount*testFileSize
+    dsCount = getDatasetCount(testConfig.baseSize, dsSize, numTests)
 
     dsQueue = queue.Queue()
     resultQueue = queue.Queue()
@@ -135,7 +141,7 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
             raise status
     log.info("test_parallel-processes: start uploads")
     start = timer()
-    for i in range(1, testDatasetCount+1):
+    for i in range(1, dsCount+1):
         name = "%s-%s-%05d" % (testDatasetName, tag, i)
         dsQueue.put(name)
     dsQueue.join()
@@ -162,7 +168,7 @@ def test_upload(icatconfig, stat, tmpdir, source, numProcs):
                 raise r
         except queue.Empty:
             break
-    assert c == testDatasetCount
+    assert c == dsCount
     assert tc == numProcs
     log.info("test_parallel-processes: uploaded %s in %s (%s/s)", 
              MemorySpace(size), Time(elapsed), MemorySpace(size/elapsed))

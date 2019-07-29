@@ -39,15 +39,15 @@ def createDatasets(client, testConfig):
         "name": "= '%s'" % testInvestigation,
     })
     inv = client.assertedSearch(query)[0]
-    count = int(0.16*testConfig.baseSize/SmallDataset.getSize())
+    count = int(0.08*testConfig.baseSize/SmallDataset.getSize())
     for i in range(1, count+1):
         name = "%s-a%05d" % (testDatasetName, i)
         testDatasets.append(SmallDataset(client, inv, name))
-    count = int(0.04*testConfig.baseSize/ManyFileDataset.getSize())
+    count = int(0.02*testConfig.baseSize/ManyFileDataset.getSize())
     for i in range(1, count+1):
         name = "%s-b%05d" % (testDatasetName, i)
         testDatasets.append(ManyFileDataset(client, inv, name))
-    count = int(1.80*testConfig.baseSize/BigDataset.getSize())
+    count = int(0.90*testConfig.baseSize/BigDataset.getSize())
     for i in range(1, count+1):
         name = "%s-c%05d" % (testDatasetName, i)
         testDatasets.append(BigDataset(client, inv, name))
