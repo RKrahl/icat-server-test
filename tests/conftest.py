@@ -143,16 +143,22 @@ def wipe_data(client, dsquery):
             status = client.ids.getStatus(DataSelection([ds]))
             if status == "ONLINE":
                 deleteDatasets.append(ds)
-                if len(deleteDatasets) >= 200:
-                    client.deleteData(deleteDatasets)
-                    client.deleteMany(deleteDatasets)
+                if len(deleteDatasets) >= 25:
+                    try:
+                        client.deleteData(deleteDatasets)
+                        client.deleteMany(deleteDatasets)
+                    except icat.IDSDataNotOnlineError:
+                        pass
                     deleteDatasets = []
             elif status == "ARCHIVED":
-                if len(restoreDatasets) < 200:
+                if len(restoreDatasets) < 25:
                     restoreDatasets.append(ds)
         if len(deleteDatasets) > 0:
-            client.deleteData(deleteDatasets)
-            client.deleteMany(deleteDatasets)
+            try:
+                client.deleteData(deleteDatasets)
+                client.deleteMany(deleteDatasets)
+            except icat.IDSDataNotOnlineError:
+                pass
         if len(restoreDatasets) > 0:
             client.ids.restore(DataSelection(restoreDatasets))
         # This whole loop may take a significant amount of time, make
