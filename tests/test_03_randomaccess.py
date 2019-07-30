@@ -5,6 +5,7 @@ from __future__ import print_function
 import logging
 from timeit import default_timer as timer
 import random
+import time
 import pytest
 import icat
 import icat.config
@@ -94,6 +95,8 @@ def test_upload(client, testConfig, stat):
     elapsed = Time(end - start)
     log.info("Uploaded %s in %s (%s/s)", 
              MemorySpace(totalsize), elapsed, MemorySpace(totalsize/elapsed))
+    # sleep a while to allow the uploaded datasets to be written to archive.
+    time.sleep(2*60)
 
 def test_download(client, stat):
     hour = 60*60
