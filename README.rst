@@ -4,17 +4,24 @@ icat-server-test - A test suite for ICAT and IDS servers
 This package provides a collection of tests for an `ICAT`_ and IDS
 service.
 
+*Note*: This package was originally written for inhouse use at HZB,
+mainly to assess the usability of the storage backend for IDS we
+planned to use.  The tests were written ad hoc, some tests turned out
+to be not very useful, but have been kept anyway.  There is
+essentially no documentation at all.
+
 
 System requirements
 -------------------
 
 Python:
 
-+ Python 2.6, 2.7, or 3.1 and newer.
++ Python 3.2 and newer.
+  (The `subprocess` module on older Python versions is not thread safe.)
 
 Required Library packages:
 
-+ `python-icat`_
++ `python-icat`_ >= 0.14.0
 
 + `pytest`_ >= 2.8
 
@@ -56,7 +63,7 @@ is nothing that you could install.
 Copyright and License
 ---------------------
 
-Copyright 2013-2016
+Copyright 2013-2019
 Helmholtz-Zentrum Berlin für Materialien und Energie GmbH
 
 Licensed under the Apache License, Version 2.0 (the "License"); you
