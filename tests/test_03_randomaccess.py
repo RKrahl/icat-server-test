@@ -83,11 +83,8 @@ def test_upload(client, testConfig, stat):
     random.shuffle(testDatasets)
     totalsize = 0
     start = timer()
-    next_refresh = 0
     for dataset in testDatasets:
-        if timer() > next_refresh:
-            client.refresh()
-            next_refresh = timer()+hour
+        client.autoRefresh()
         statitem = dataset.uploadFiles(client)
         stat.add(statitem)
         totalsize += dataset.size
@@ -104,11 +101,8 @@ def test_download(client, stat):
     count = 5*len(testDatasets)
     totalsize = 0
     start = timer()
-    next_refresh = 0
     for i in range(count):
-        if timer() > next_refresh:
-            client.refresh()
-            next_refresh = timer()+hour
+        client.autoRefresh()
         dataset = random.choice(testDatasets)
         statitem = dataset.download(client)
         stat.add(statitem)
