@@ -19,6 +19,7 @@ import icat
 import icat.config
 from icat.query import Query
 from icat.ids import DataSelection
+icat.hzb = pytest.importorskip("icat.hzb") # This test module is HZB specific
 from icat.hzb.proposal import ProposalNo
 from helper import MemorySpace, DatasetBase
 from conftest import getConfig, callscript
